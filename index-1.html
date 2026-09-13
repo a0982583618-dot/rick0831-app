@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幣勢 — 開盤前趨勢掃描</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0D1220;
+    --bg-panel:#141B2D;
+    --bg-panel-alt:#1A2338;
+    --hairline:#2A3450;
+    --text-primary:#E8EAF0;
+    --text-muted:#8E96AC;
+    --bull:#3FAF82;
+    --bull-soft:#204434;
+    --bear:#D9614F;
+    --bear-soft:#402420;
+    --gold:#D9A441;
+    --gold-soft:#3A3018;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg-deep);color:var(--text-primary);font-family:'Space Grotesk',sans-serif;min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 20px 60px;}
+
+  header{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end;
+    border-bottom:1px solid var(--hairline);padding-bottom:20px;margin-bottom:20px;}
+  h1{font-size:28px;font-weight:700;margin:0;letter-spacing:-0.01em;}
+  h1 span{color:var(--gold);}
+  .subtitle{color:var(--text-muted);font-size:14px;margin-top:4px;}
+  .clock-block{text-align:right;}
+  .clock{font-size:22px;font-weight:600;}
+  .countdown{font-size:13px;color:var(--gold);margin-top:2px;}
+
+  .disclaimer{
+    background:var(--gold-soft);border:1px solid #5A4A22;border-radius:8px;
+    padding:10px 16px;font-size:12.5px;color:#E9D9AE;margin-bottom:20px;line-height:1.6;
+  }
+
+  .breadth{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:10px;padding:16px 20px;margin-bottom:18px;}
+  .breadth-top{display:flex;justify-content:space-between;font-size:13px;color:var(--text-muted);margin-bottom:8px;}
+  .breadth-bar{height:10px;border-radius:6px;overflow:hidden;display:flex;background:var(--bg-panel-alt);}
+  .breadth-bull{background:var(--bull);height:100%;}
+  .breadth-bear{background:var(--bear);height:100%;}
+
+  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:22px;font-size:13px;color:var(--text-muted);}
+  .controls label{display:flex;align-items:center;gap:6px;}
+  .controls input[type=number]{width:64px;background:var(--bg-panel-alt);border:1px solid var(--hairline);
+    color:var(--text-primary);border-radius:6px;padding:5px 8px;font-family:'IBM Plex Mono',monospace;}
+  .controls select{background:var(--bg-panel-alt);border:1px solid var(--hairline);
+    color:var(--text-primary);border-radius:6px;padding:5px 8px;font-family:'Space Grotesk',sans-serif;}
+  button.refresh{background:var(--gold);color:#1A1408;border:none;border-radius:6px;
+    padding:7px 16px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;}
+  button.refresh:hover{opacity:0.9;}
+  .status{color:var(--text-muted);font-size:12px;}
+
+  /* 今日重點 — 簡化重點卡 */
+  .spotlight{margin-bottom:22px;}
+  .spotlight h2{font-size:15px;margin:0 0 10px;font-weight:600;color:var(--text-muted);}
+  .spotlight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;}
+  .spot-card{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:10px;padding:16px;}
+  .spot-card .sym{font-size:20px;font-weight:700;}
+  .spot-card .tag{display:inline-block;margin-left:8px;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;vertical-align:middle;}
+  .spot-card .row{display:flex;justify-content:space-between;font-size:12.5px;color:var(--text-muted);margin-top:8px;}
+  .spot-card .row b{color:var(--text-primary);font-family:'IBM Plex Mono',monospace;}
+  .tag-long{background:var(--bull-soft);color:var(--bull);}
+  .tag-short{background:var(--bear-soft);color:var(--bear);}
+  .empty-spot{color:var(--text-muted);font-size:13px;padding:10px 0;}
+
+  .columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;}
+  @media (max-width:820px){.columns{grid-template-columns:1fr;}}
+
+  .panel{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:10px;overflow:hidden;}
+  .panel-head{padding:14px 18px;border-bottom:1px solid var(--hairline);display:flex;justify-content:space-between;align-items:center;}
+  .panel-head h2{font-size:15px;margin:0;font-weight:600;}
+  .panel-head .count{font-size:12px;color:var(--text-muted);}
+  .rows{max-height:520px;overflow-y:auto;}
+  .row{display:flex;flex-direction:column;gap:5px;
+    padding:11px 18px;border-bottom:1px solid var(--hairline);font-size:13px;}
+  .row .row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .row .row-bottom{display:flex;gap:6px;flex-wrap:wrap;}
+  .row:last-child{border-bottom:none;}
+  .sym{font-weight:600;}
+  .dir-tag{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600;white-space:nowrap;}
+  .dir-strong-long{background:var(--bull-soft);color:var(--bull);}
+  .dir-weak-long{background:var(--bull-soft);color:var(--bull);opacity:0.75;}
+  .dir-strong-short{background:var(--bear-soft);color:var(--bear);}
+  .dir-weak-short{background:var(--bear-soft);color:var(--bear);opacity:0.75;}
+  .align-tag{font-size:11px;color:var(--text-muted);white-space:nowrap;}
+  .major-tag{font-size:10.5px;padding:1px 7px;border-radius:20px;white-space:nowrap;border:1px solid var(--hairline);}
+  .major-up{color:var(--bull);border-color:var(--bull-soft);}
+  .major-down{color:var(--bear);border-color:var(--bear-soft);}
+  .major-range{color:var(--text-muted);}
+  .align-yes{color:var(--gold);}
+  .conf{font-family:'IBM Plex Mono',monospace;color:var(--text-muted);text-align:right;}
+  .chg{font-family:'IBM Plex Mono',monospace;text-align:right;}
+  .chg.up{color:var(--bull);}
+  .chg.down{color:var(--bear);}
+  .empty{padding:30px 18px;color:var(--text-muted);font-size:13px;text-align:center;}
+
+  .lower-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+  @media (max-width:820px){.lower-grid{grid-template-columns:1fr;}}
+  .mini-row{display:flex;justify-content:space-between;padding:9px 18px;border-bottom:1px solid var(--hairline);font-size:13px;}
+  .mini-row:last-child{border-bottom:none;}
+  .mini-row .sym{font-weight:600;}
+  .mini-row .val{font-family:'IBM Plex Mono',monospace;color:var(--text-muted);}
+
+  .backtest-panel{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:10px;margin-bottom:18px;overflow:hidden;}
+  .backtest-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--hairline);}
+  .bt-stat{background:var(--bg-panel);padding:16px 18px;}
+  .bt-stat .label{font-size:12px;color:var(--text-muted);}
+  .bt-stat .value{font-size:24px;font-weight:700;font-family:'IBM Plex Mono',monospace;margin-top:4px;}
+  .bt-stat .value.bull{color:var(--bull);}
+  .bt-stat .value.bear{color:var(--bear);}
+  .bt-note{padding:12px 18px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--hairline);line-height:1.6;}
+
+  .macro-panel{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:10px;margin-bottom:18px;overflow:hidden;}
+  .macro-add{display:flex;flex-wrap:wrap;gap:8px;padding:14px 18px;border-bottom:1px solid var(--hairline);}
+  .macro-add input{
+    background:var(--bg-panel-alt);border:1px solid var(--hairline);color:var(--text-primary);
+    border-radius:6px;padding:7px 10px;font-family:'Space Grotesk',sans-serif;font-size:13px;
+  }
+  .macro-add input[type=text]{flex:1;min-width:140px;}
+  .macro-add button{
+    background:var(--gold);color:#1A1408;border:none;border-radius:6px;
+    padding:7px 16px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;
+  }
+  .macro-row{display:flex;justify-content:space-between;align-items:center;padding:11px 18px;border-bottom:1px solid var(--hairline);font-size:13px;gap:10px;}
+  .macro-row:last-child{border-bottom:none;}
+  .macro-row .name{font-weight:600;}
+  .macro-row .eta{font-family:'IBM Plex Mono',monospace;color:var(--gold);font-size:12.5px;}
+  .macro-row .del{color:var(--bear);cursor:pointer;font-size:12px;background:none;border:none;font-family:'Space Grotesk',sans-serif;}
+  .macro-alert{
+    margin:0 18px 14px;padding:12px 14px;background:var(--gold-soft);border:1px solid #5A4A22;
+    border-radius:8px;font-size:12.5px;color:#E9D9AE;line-height:1.6;
+  }
+
+  .coin-modal-overlay{
+    position:fixed;inset:0;background:rgba(5,8,16,0.75);z-index:900;
+    display:none;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;
+  }
+  .coin-modal{
+    background:var(--bg-panel);border:1px solid var(--hairline);border-radius:12px;
+    max-width:480px;width:100%;padding:22px;position:relative;
+  }
+  .coin-modal .close-btn{
+    position:absolute;top:14px;right:16px;background:none;border:none;color:var(--text-muted);
+    font-size:20px;cursor:pointer;line-height:1;
+  }
+  .coin-modal h3{margin:0 0 4px;font-size:22px;}
+  .coin-modal .sub{color:var(--text-muted);font-size:12.5px;margin-bottom:16px;}
+  .coin-modal .section-title{font-size:12.5px;color:var(--text-muted);margin:18px 0 8px;font-weight:600;}
+  .coin-modal .metric-row{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;border-bottom:1px solid var(--hairline);}
+  .coin-modal .metric-row:last-child{border-bottom:none;}
+  .coin-modal .metric-row b{font-family:'IBM Plex Mono',monospace;}
+  .coin-modal .note{font-size:12px;color:var(--text-muted);margin-top:14px;line-height:1.6;}
+
+  .market-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;border-bottom:1px solid var(--hairline);}
+  .market-tabs button{
+    background:none;border:none;color:var(--text-muted);font-family:'Space Grotesk',sans-serif;
+    font-size:14px;font-weight:600;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;margin-right:16px;
+  }
+  .market-tabs button.active{color:var(--gold);border-bottom-color:var(--gold);}
+  .market-view{display:none;}
+  .market-view.active{display:block;}
+  .simple-list-row{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--hairline);cursor:pointer;font-size:13.5px;}
+  .simple-list-row:last-child{border-bottom:none;}
+  .simple-list-row .sym{font-weight:600;}
+  .stock-setup{padding:16px 18px;display:flex;flex-direction:column;gap:10px;}
+  .stock-setup input{background:var(--bg-panel-alt);border:1px solid var(--hairline);color:var(--text-primary);
+    border-radius:6px;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-size:13px;}
+  .stock-setup label{font-size:12.5px;color:var(--text-muted);}
+
+  footer{margin-top:26px;padding-top:16px;border-top:1px solid var(--hairline);font-size:12px;color:var(--text-muted);line-height:1.7;}
+
+  /* 登入鎖 */
+  #lockScreen{
+    position:fixed;inset:0;background:var(--bg-deep);z-index:999;
+    display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;
+  }
+  .lock-card{background:var(--bg-panel);border:1px solid var(--hairline);border-radius:12px;
+    padding:32px 30px;width:280px;text-align:center;}
+  .lock-card h2{font-size:18px;margin:0 0 6px;}
+  .lock-card p{font-size:12.5px;color:var(--text-muted);margin:0 0 20px;}
+  .lock-card input{
+    width:100%;background:var(--bg-panel-alt);border:1px solid var(--hairline);color:var(--text-primary);
+    border-radius:6px;padding:9px 12px;margin-bottom:10px;font-family:'IBM Plex Mono',monospace;font-size:13px;
+  }
+  .lock-card button{
+    width:100%;background:var(--gold);color:#1A1408;border:none;border-radius:6px;
+    padding:10px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;margin-top:4px;
+  }
+  .lock-error{color:var(--bear);font-size:12px;height:16px;margin-top:8px;}
+  #appRoot{display:none;}
+</style>
+</head>
+<body>
+
+<div id="lockScreen">
+  <div class="lock-card">
+    <h2>幣勢 · 私人存取</h2>
+    <p>請輸入帳號密碼</p>
+    <input type="text" id="loginUser" placeholder="帳號" autocomplete="off">
+    <input type="password" id="loginPass" placeholder="密碼" autocomplete="off">
+    <button id="loginBtn">進入</button>
+    <div class="lock-error" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appRoot">
+<div class="wrap">
+
+  <header>
+    <div>
+      <h1>幣勢<span>.</span> 開盤前趨勢掃描</h1>
+      <div class="subtitle">即時行情 + 雙週期對齊 + 大盤連動 + 波動雷達</div>
+    </div>
+    <div class="clock-block">
+      <div class="clock mono" id="taipeiClock">--:--:--</div>
+      <div class="countdown mono" id="countdown">計算開盤倒數中...</div>
+    </div>
+  </header>
+
+  <div class="market-tabs">
+    <button class="active" data-market="crypto" onclick="switchMarket('crypto')">加密貨幣</button>
+    <button data-market="gold" onclick="switchMarket('gold')">黃金</button>
+    <button data-market="stocks" onclick="switchMarket('stocks')">美股</button>
+    <button data-market="patterns" onclick="switchMarket('patterns')">AI形態</button>
+  </div>
+
+  <div class="disclaimer">
+    這是訊號整理工具,不是投資建議。「信心指數」是技術指標一致程度的啟發式評分,不是統計機率,更不保證獲利。幣圈波動劇烈,任何方位判斷都可能反轉,實際進出場與資金控管請自行判斷承擔。
+  </div>
+
+<div id="view-crypto" class="market-view active">
+  <div class="breadth">
+    <div class="breadth-top">
+      <span>市場方位分佈</span>
+      <span id="breadthLabel" class="mono">— / —</span>
+    </div>
+    <div class="breadth-bar">
+      <div class="breadth-bull" id="breadthBull" style="width:50%"></div>
+      <div class="breadth-bear" id="breadthBear" style="width:50%"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <label>資料來源
+      <select id="dataSource">
+        <option value="binance" selected>Binance</option>
+        <option value="bingx">BingX(現貨)</option>
+        <option value="bingx-swap">BingX(永續合約)</option>
+      </select>
+    </label>
+    <label>掃描幣種數 <input type="number" id="scanCount" value="30" min="5" max="80" step="5"></label>
+    <label>主週期
+      <select id="interval">
+        <option value="15m">15分</option>
+        <option value="1h" selected>1小時</option>
+        <option value="4h">4小時</option>
+      </select>
+    </label>
+    <label>自動更新
+      <select id="autoRefresh">
+        <option value="0">關閉</option>
+        <option value="60000">每1分鐘</option>
+        <option value="300000" selected>每5分鐘</option>
+        <option value="900000">每15分鐘</option>
+      </select>
+    </label>
+    <label>回測驗證區間
+      <select id="lookahead">
+        <option value="4">4根K棒後</option>
+        <option value="8" selected>8根K棒後</option>
+        <option value="16">16根K棒後</option>
+      </select>
+    </label>
+    <button class="refresh" id="refreshBtn">立即掃描</button>
+    <span class="status" id="statusText">尚未掃描</span>
+  </div>
+
+  <div class="spotlight">
+    <h2>主流幣參考 · 不論訊號強弱,永遠顯示這幾個當大盤參考</h2>
+    <div class="spotlight-grid" id="mainstreamGrid">
+      <div class="empty-spot">掃描後會顯示這裡</div>
+    </div>
+  </div>
+
+  <div class="spotlight">
+    <h2>今日重點關注 · 短線+長線同向、且跟得上大盤確認的幣種</h2>
+    <div class="spotlight-grid" id="spotlightGrid">
+      <div class="empty-spot">掃描後會顯示這裡</div>
+    </div>
+  </div>
+
+  <div class="backtest-panel">
+    <div class="panel-head"><h2>回測 · 這套邏輯過去的真實勝率</h2><span class="count" id="btSample">尚無資料</span></div>
+    <div class="backtest-stats" id="btStats">
+      <div class="bt-stat"><div class="label">整體勝率</div><div class="value" id="btOverall">—</div></div>
+      <div class="bt-stat"><div class="label">做多訊號勝率</div><div class="value bull" id="btLong">—</div></div>
+      <div class="bt-stat"><div class="label">做空訊號勝率</div><div class="value bear" id="btShort">—</div></div>
+      <div class="bt-stat"><div class="label">總訊號樣本數</div><div class="value" id="btCount">—</div></div>
+      <div class="bt-stat"><div class="label">前段勝率</div><div class="value" id="btFirstHalf">—</div></div>
+      <div class="bt-stat"><div class="label">後段勝率</div><div class="value" id="btSecondHalf">—</div></div>
+      <div class="bt-stat"><div class="label">做多期望值/次</div><div class="value bull" id="btLongExp">—</div></div>
+      <div class="bt-stat"><div class="label">做空期望值/次</div><div class="value bear" id="btShortExp">—</div></div>
+    </div>
+    <div class="bt-note" id="btStability"></div>
+    <div class="bt-note" style="border-top:1px solid var(--hairline);padding-top:14px;">
+      <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">歷史表現追蹤(整體勝率隨掃描次數變化)</div>
+      <div id="crypto-perfChart"><div class="empty">尚無足夠紀錄</div></div>
+    </div>
+    <div class="bt-note">用目前這套評分邏輯,套回過去的歷史K棒:每次出現「強多/強空」訊號時,檢查往後幾根K棒價格是否真的往預測方向走,如實統計成功比例。這是同一批資料上的回測(in-sample),沒有計入手續費與滑價,樣本數也有限——數字僅供參考,不是未來勝率的保證,務必自行驗證後再決定資金投入。</div>
+  </div>
+
+  <div class="columns">
+    <div class="panel">
+      <div class="panel-head"><h2>大趨勢 · 訊號集中</h2><span class="count" id="bigCount">0 檔</span></div>
+      <div class="rows" id="bigTrendRows"><div class="empty">按「立即掃描」開始</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>小趨勢 · 訊號初現</h2><span class="count" id="smallCount">0 檔</span></div>
+      <div class="rows" id="smallTrendRows"><div class="empty">按「立即掃描」開始</div></div>
+    </div>
+  </div>
+
+  <div class="macro-panel">
+    <div class="panel-head"><h2>宏觀事件提醒 · 手動輸入,系統倒數+比對波動雷達</h2><span class="count" id="macroCount">0 筆</span></div>
+    <div class="macro-add">
+      <input type="text" id="macroName" placeholder="事件名稱(例如:FOMC利率決策)">
+      <input type="datetime-local" id="macroTime">
+      <button id="macroAddBtn">加入提醒</button>
+    </div>
+    <div id="macroAlerts"></div>
+    <div id="macroRows"><div class="empty">尚未加入任何事件</div></div>
+  </div>
+
+  <div class="lower-grid">
+    <div class="panel">
+      <div class="panel-head"><h2>波動雷達 · 新聞震盪敏感度前十</h2><span class="count">近14根K棒振幅</span></div>
+      <div id="volRadarRows"><div class="empty">掃描後顯示</div></div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>重複出現榜 · 近期多次列強訊號</h2><span class="count" id="historyCount">尚無紀錄</span></div>
+      <div id="historyRows"><div class="empty">掃描幾次之後會累積紀錄</div></div>
+    </div>
+  </div>
+  </div>
+
+  <div id="view-gold" class="market-view">
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-head"><h2>真實黃金現貨設定(選填)</h2></div>
+      <div class="stock-setup">
+        <label>Twelve Data API金鑰(選填,填了才會多顯示「黃金現貨 XAU/USD」真實報價;沒填只顯示PAXG/XAUT黃金代幣。跟美股分頁共用同一組免費額度,只存在你的裝置上)</label>
+        <input type="password" id="gold-apikey" placeholder="貼上你的API金鑰(可跟美股分頁用同一組)">
+      </div>
+    </div>
+    <div class="controls">
+      <label>主週期
+        <select id="gold-interval">
+          <option value="15m">15分</option>
+          <option value="1h" selected>1小時</option>
+          <option value="4h">4小時</option>
+        </select>
+      </label>
+      <label>回測驗證區間
+        <select id="gold-lookahead">
+          <option value="4">4根K棒後</option>
+          <option value="8" selected>8根K棒後</option>
+          <option value="16">16根K棒後</option>
+        </select>
+      </label>
+      <button class="refresh" id="gold-refreshBtn">立即掃描</button>
+      <span class="status" id="gold-statusText">尚未掃描</span>
+    </div>
+    <div class="backtest-panel">
+      <div class="panel-head"><h2>回測 · 黃金真實勝率</h2><span class="count" id="gold-btSample">尚無資料</span></div>
+      <div class="backtest-stats">
+        <div class="bt-stat"><div class="label">整體勝率</div><div class="value" id="gold-btOverall">—</div></div>
+        <div class="bt-stat"><div class="label">做多訊號勝率</div><div class="value bull" id="gold-btLong">—</div></div>
+        <div class="bt-stat"><div class="label">做空訊號勝率</div><div class="value bear" id="gold-btShort">—</div></div>
+        <div class="bt-stat"><div class="label">總訊號樣本數</div><div class="value" id="gold-btCount">—</div></div>
+      </div>
+      <div class="bt-note" id="gold-btStability"></div>
+      <div class="bt-note" style="border-top:1px solid var(--hairline);padding-top:14px;">
+        <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">歷史表現追蹤</div>
+        <div id="gold-perfChart"><div class="empty">尚無足夠紀錄</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>黃金即時分析(點擊看詳細)</h2><span class="count" id="gold-listCount">追蹤 PAXG、XAUT</span></div>
+      <div id="gold-listRows"><div class="empty">按「立即掃描」開始</div></div>
+    </div>
+  </div>
+
+  <div id="view-stocks" class="market-view">
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-head"><h2>美股資料設定</h2></div>
+      <div class="stock-setup">
+        <label>Twelve Data API金鑰(免費註冊取得,只存在你的裝置上)</label>
+        <input type="password" id="stock-apikey" placeholder="貼上你的API金鑰">
+        <label>自選清單(逗號分隔,例如指數ETF代表:SPY,QQQ,DIA,加個股:TSLA,AAPL,NVDA)</label>
+        <input type="text" id="stock-watchlist" value="SPY,QQQ,DIA,AAPL,TSLA,NVDA">
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label style="display:flex;align-items:center;gap:6px;">主週期
+            <select id="stock-interval">
+              <option value="15m">15分</option>
+              <option value="1h" selected>1小時</option>
+              <option value="4h">4小時</option>
+            </select>
+          </label>
+          <button class="refresh" id="stock-refreshBtn">立即掃描</button>
+          <span class="status" id="stock-statusText">尚未掃描</span>
+        </div>
+        <div class="note" style="font-size:12px;color:var(--text-muted);">免費額度每分鐘8次查詢。現在每檔股票要抓兩個週期(主週期+長週期比對)才能判斷「強訊號」,等於每檔要兩次查詢,掃描時間會是原本的兩倍左右,清單越長跑越久,請耐心等待,不要重複按掃描。</div>
+      </div>
+    </div>
+    <div class="backtest-panel">
+      <div class="panel-head"><h2>回測 · 美股清單真實勝率</h2><span class="count" id="stock-btSample">尚無資料</span></div>
+      <div class="backtest-stats">
+        <div class="bt-stat"><div class="label">整體勝率</div><div class="value" id="stock-btOverall">—</div></div>
+        <div class="bt-stat"><div class="label">做多訊號勝率</div><div class="value bull" id="stock-btLong">—</div></div>
+        <div class="bt-stat"><div class="label">做空訊號勝率</div><div class="value bear" id="stock-btShort">—</div></div>
+        <div class="bt-stat"><div class="label">總訊號樣本數</div><div class="value" id="stock-btCount">—</div></div>
+      </div>
+      <div class="bt-note" id="stock-btStability"></div>
+      <div class="bt-note" style="border-top:1px solid var(--hairline);padding-top:14px;">
+        <div style="font-weight:600;color:var(--text-primary);margin-bottom:8px;">歷史表現追蹤</div>
+        <div id="stock-perfChart"><div class="empty">尚無足夠紀錄</div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>美股清單即時分析(點擊看詳細)</h2><span class="count" id="stock-listCount"></span></div>
+      <div id="stock-listRows"><div class="empty">設定金鑰與清單後按「立即掃描」</div></div>
+    </div>
+  </div>
+
+  <div id="view-patterns" class="market-view">
+    <div class="disclaimer">
+      這裡彙整「加密貨幣」「黃金」「美股」三個分頁裡,目前偵測到的經典技術形態(123法則、雙頂/雙底、頭肩頂/底、三角收斂、旗形、楔型、供需區、ABCD諧波、Order Block)。這是純規則比對,不是機率預測,型態成立不代表一定會照著走。要先去對應分頁按過「立即掃描」,這裡才會有資料。
+    </div>
+    <div class="panel" style="margin-bottom:18px;">
+      <div class="panel-head">
+        <h2>形態篩選</h2>
+      </div>
+      <div class="controls" style="padding:14px 18px;margin-bottom:0;">
+        <label>市場
+          <select id="pattern-marketFilter" onchange="renderPatternBoard()">
+            <option value="all" selected>全部</option>
+            <option value="crypto">加密貨幣</option>
+            <option value="gold">黃金</option>
+            <option value="stock">美股</option>
+          </select>
+        </label>
+        <label>方向
+          <select id="pattern-dirFilter" onchange="renderPatternBoard()">
+            <option value="all" selected>多空都看</option>
+            <option value="bull">只看偏多</option>
+            <option value="bear">只看偏空</option>
+          </select>
+        </label>
+        <label>只顯示已突破確認
+          <select id="pattern-confirmFilter" onchange="renderPatternBoard()">
+            <option value="0">否(含未確認)</option>
+            <option value="1" selected>是</option>
+          </select>
+        </label>
+        <button class="refresh" onclick="renderPatternBoard()">重新整理清單</button>
+        <span class="status" id="pattern-statusText">尚無資料,請先到其他分頁掃描</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h2>目前偵測到的形態(點擊看詳細)</h2><span class="count" id="pattern-count">0 筆</span></div>
+      <div class="rows" id="patternRows" style="max-height:none;"><div class="empty">請先到「加密貨幣」「黃金」或「美股」分頁按「立即掃描」,再回來這裡看彙整結果</div></div>
+    </div>
+  </div>
+
+  <footer>
+    波動雷達是用近期K棒的振幅(高低價差 / 收盤價)排序,历史上振幅大的幣種在總經數據公布(如利率決策、通膨數據、就業報告)時往往反應更劇烈 —— 但這是「历史敏感度」的參考,不是「這次新聞公布後一定會震盪」的預測,實際反應仍取決於數據本身是否超乎預期。重複出現榜是把每次掃描結果存起來(僅存在你的裝置/帳號,不會分享給別人),累積次數越高代表該方位在多次掃描間持續出現,但不代表未來會繼續。資料來源:Binance 公開行情 API。
+  </footer>
+
+</div>
+</div>
+
+<div id="coinModalOverlay" class="coin-modal-overlay" onclick="if(event.target===this) closeCoinDetail()">
+  <div class="coin-modal">
+    <button class="close-btn" onclick="closeCoinDetail()">✕</button>
+    <div id="coinModalBody">載入中...</div>
+  </div>
+</div>
+
+<script>
+// ---------- 儲存相容層:優先用window.storage(僅在Claude製作環境可用),部署到一般網站
+// (GitHub Pages / Netlify等)時window.storage不存在,自動改用瀏覽器localStorage,
+// 讓歷史紀錄真正留在手機瀏覽器裡,不會每次重新整理或背景切換就歸零 ----------
+if(!window.storage){
+  window.storage = {
+    async get(key){
+      const raw = localStorage.getItem('bishi:'+key);
+      if(raw===null) throw new Error('key not found');
+      return { key, value: raw, shared:false };
+    },
+    async set(key, value){
+      localStorage.setItem('bishi:'+key, value);
+      return { key, value, shared:false };
+    },
+    async delete(key){
+      localStorage.removeItem('bishi:'+key);
+      return { key, deleted:true, shared:false };
+    },
+    async list(prefix){
+      const keys = Object.keys(localStorage).filter(k=>k.startsWith('bishi:'+(prefix||''))).map(k=>k.slice(6));
+      return { keys, shared:false };
+    }
+  };
+}
+
+const AUTH_USER = "andy1770";
+const AUTH_PASS = "bamk0982583618";
+
+function tryLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if(u===AUTH_USER && p===AUTH_PASS){
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    startApp();
+  }else{
+    document.getElementById('loginError').textContent = '帳號或密碼錯誤';
+  }
+}
+document.getElementById('loginBtn').addEventListener('click', tryLogin);
+document.getElementById('loginPass').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+document.getElementById('loginUser').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+
+const state = { timer:null, history:[], macroEvents:[], lastVolTop:[], resultsByMarket:{crypto:[],gold:[],stock:[]}, perfHistory:{crypto:[],gold:[],stock:[]}, liveTrack:{}, liveSignals:{} };
+
+// ---------- Taipei clock + countdown ----------
+function updateClock(){
+  const now = new Date();
+  const taipeiStr = now.toLocaleString('en-US', {timeZone:'Asia/Taipei', hour12:false,
+    year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const [datePart, timePart] = taipeiStr.split(', ');
+  document.getElementById('taipeiClock').textContent = timePart + ' 台北';
+  const [mm, dd, yyyy] = datePart.split('/').map(Number);
+  const [hh, mi, ss] = timePart.split(':').map(Number);
+  const taipeiNow = new Date(Date.UTC(yyyy, mm-1, dd, hh, mi, ss));
+  let target = new Date(Date.UTC(yyyy, mm-1, dd, 21, 30, 0));
+  if (taipeiNow >= target) target.setUTCDate(target.getUTCDate()+1);
+  let diff = Math.floor((target - taipeiNow)/1000);
+  const h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
+  document.getElementById('countdown').textContent = `距台灣晚間 21:30 開盤還有 ${h}時${m}分${s}秒`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ---------- 宏觀事件提醒(手動輸入,非自動抓新聞) ----------
+async function loadMacroEvents(){
+  try{
+    const r = await window.storage.get('macro-events', false);
+    state.macroEvents = r ? JSON.parse(r.value) : [];
+  }catch(e){ state.macroEvents = []; }
+}
+async function saveMacroEvents(){
+  try{ await window.storage.set('macro-events', JSON.stringify(state.macroEvents), false); }catch(e){ /* ignore */ }
+}
+function addMacroEvent(){
+  const nameEl = document.getElementById('macroName');
+  const timeEl = document.getElementById('macroTime');
+  const name = nameEl.value.trim();
+  const timeVal = timeEl.value;
+  if(!name || !timeVal) return;
+  state.macroEvents.push({ id: Date.now().toString(), name, time: new Date(timeVal).getTime() });
+  state.macroEvents.sort((a,b)=>a.time-b.time);
+  saveMacroEvents();
+  nameEl.value=''; timeEl.value='';
+  renderMacroEvents();
+}
+function removeMacroEvent(id){
+  state.macroEvents = state.macroEvents.filter(e=>e.id!==id);
+  saveMacroEvents();
+  renderMacroEvents();
+}
+function renderMacroEvents(){
+  const now = Date.now();
+  document.getElementById('macroCount').textContent = state.macroEvents.length+' 筆';
+  const rowsEl = document.getElementById('macroRows');
+  rowsEl.innerHTML = state.macroEvents.length ? state.macroEvents.map(ev=>{
+    const diff = Math.floor((ev.time-now)/1000);
+    let eta;
+    if(diff>0){
+      const h=Math.floor(diff/3600), m=Math.floor((diff%3600)/60);
+      eta = h>0 ? `還有 ${h}時${m}分` : `還有 ${m}分`;
+    }else{
+      const passedH = Math.floor(-diff/3600);
+      eta = passedH<24 ? `已過 ${passedH}小時` : `已過去`;
+    }
+    return `<div class="macro-row">
+      <span class="name">${ev.name}</span>
+      <span class="eta">${eta}</span>
+      <button class="del" onclick="removeMacroEvent('${ev.id}')">刪除</button>
+    </div>`;
+  }).join('') : '<div class="empty">尚未加入任何事件</div>';
+
+  // 事件前2小時內、或剛過去1小時內,標示目前波動雷達最敏感的幣種
+  const alertsEl = document.getElementById('macroAlerts');
+  const nearEvents = state.macroEvents.filter(ev=>{
+    const diff = (ev.time-now)/1000;
+    return diff > -3600 && diff < 7200;
+  });
+  if(nearEvents.length && state.lastVolTop.length){
+    const topNames = state.lastVolTop.slice(0,5).map(r=>r.symbol).join('、');
+    alertsEl.innerHTML = nearEvents.map(ev=>{
+      const diff = Math.floor((ev.time-now)/1000);
+      const label = diff>0 ? `還有 ${Math.floor(diff/60)} 分鐘` : `已公布 ${Math.floor(-diff/60)} 分鐘`;
+      return `<div class="macro-alert"><strong>${ev.name}</strong>${label} —— 目前波動雷達最敏感的幣種:${topNames}。這是「歷史振幅較大」的參考名單,不代表這次一定會震盪,實際還是要看數據本身是否超乎預期。</div>`;
+    }).join('');
+  }else{
+    alertsEl.innerHTML = '';
+  }
+}
+document.getElementById('macroAddBtn').addEventListener('click', addMacroEvent);
+setInterval(renderMacroEvents, 1000);
+
+// ---------- Indicators ----------
+function sma(arr, period, endIdx){ let sum=0; for(let i=endIdx-period+1;i<=endIdx;i++) sum+=arr[i]; return sum/period; }
+function rsi(closes, period=14){
+  let gains=0, losses=0;
+  for(let i=closes.length-period;i<closes.length;i++){
+    const diff = closes[i]-closes[i-1];
+    if(diff>=0) gains+=diff; else losses-=diff;
+  }
+  const avgGain=gains/period, avgLoss=losses/period;
+  if(avgLoss===0) return 100;
+  return 100 - (100/(1+avgGain/avgLoss));
+}
+function atrPercent(candles, period=14){
+  const highs=candles.map(c=>parseFloat(c[2])), lows=candles.map(c=>parseFloat(c[3])), closes=candles.map(c=>parseFloat(c[4]));
+  const n=closes.length; let trs=[];
+  for(let i=n-period;i<n;i++){
+    const tr = Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1]));
+    trs.push(tr);
+  }
+  const atr = trs.reduce((a,b)=>a+b,0)/trs.length;
+  return (atr/closes[n-1])*100;
+}
+
+// 簡化版趨勢強度指標(概念類似ADX,用簡單移動平均取代Wilder平滑,非教科書精確版本)
+// 用來分辨「現在真的有方向性」還是「原地盤整雜訊」,數值越高代表趨勢越明確
+function trendStrength(candles, period=14){
+  const highs=candles.map(c=>parseFloat(c[2])), lows=candles.map(c=>parseFloat(c[3])), closes=candles.map(c=>parseFloat(c[4]));
+  const n = closes.length;
+  if(n < period*2+2) return 0;
+  let trArr=[], plusDM=[], minusDM=[];
+  for(let i=1;i<n;i++){
+    const upMove = highs[i]-highs[i-1];
+    const downMove = lows[i-1]-lows[i];
+    plusDM.push(upMove>downMove && upMove>0 ? upMove : 0);
+    minusDM.push(downMove>upMove && downMove>0 ? downMove : 0);
+    trArr.push(Math.max(highs[i]-lows[i], Math.abs(highs[i]-closes[i-1]), Math.abs(lows[i]-closes[i-1])));
+  }
+  const m = trArr.length;
+  const smTR = sma(trArr, period, m-1);
+  const smPlusDM = sma(plusDM, period, m-1);
+  const smMinusDM = sma(minusDM, period, m-1);
+  if(smTR===0) return 0;
+  const plusDI = 100*smPlusDM/smTR;
+  const minusDI = 100*smMinusDM/smTR;
+  const sumDI = plusDI+minusDI;
+  if(sumDI===0) return 0;
+  return 100*Math.abs(plusDI-minusDI)/sumDI; // DX,趨勢強度的即時代理值
+}
+
+// 布林帶:判斷價格相對波動區間的位置,以及是否突破區間
+function bollingerBands(closes, period, endIdx, mult=2){
+  const mid = sma(closes, period, endIdx);
+  let variance = 0;
+  for(let i=endIdx-period+1;i<=endIdx;i++){ variance += Math.pow(closes[i]-mid,2); }
+  variance /= period;
+  const sd = Math.sqrt(variance);
+  return { mid, upper: mid+mult*sd, lower: mid-mult*sd, widthPct: mid>0 ? (2*mult*sd/mid)*100 : 0 };
+}
+
+// 主動買方成交量比例(僅Binance K棒資料含此欄位,index 9);BingX資料沒有這欄,回傳null
+function buyPressureRatio(candle, volume){
+  if(!Array.isArray(candle) || candle.length < 10 || volume<=0) return null;
+  const takerBuy = parseFloat(candle[9]);
+  if(isNaN(takerBuy)) return null;
+  return takerBuy / volume;
+}
+
+// ---------- 市場結構(擺動高低點)與進場參考區 ----------
+// 用「碎形」方式抓擺動高/低點:某根K棒的高點若是前後lookback根裡最高,視為擺動高點;低點同理。
+// 最近幾根K棒的擺動點還不算「確認」,因為需要後面的K棒才能驗證,這是正常現象,不是bug。
+function findSwings(candles, lookback=3){
+  const highs = candles.map(c=>parseFloat(c[2]));
+  const lows = candles.map(c=>parseFloat(c[3]));
+  const n = highs.length;
+  const swingHighs = [], swingLows = [];
+  for(let i=lookback; i<n-lookback; i++){
+    let isHigh = true, isLow = true;
+    for(let j=i-lookback; j<=i+lookback; j++){
+      if(j===i) continue;
+      if(highs[j] >= highs[i]) isHigh = false;
+      if(lows[j] <= lows[i]) isLow = false;
+    }
+    if(isHigh) swingHighs.push({index:i, price:highs[i]});
+    if(isLow) swingLows.push({index:i, price:lows[i]});
+  }
+  return { swingHighs, swingLows };
+}
+
+// 用最近兩個擺動高點/低點判斷市場結構:更高高點+更高低點=上升結構;更低高點+更低低點=下降結構
+// 把擺動高點/低點合併成交替出現的鋸齒序列,方便判斷123法則這種需要「高低高低交替」的型態
+function buildZigzag(swingHighs, swingLows){
+  let merged = [
+    ...swingHighs.map(h=>({...h, type:'high'})),
+    ...swingLows.map(l=>({...l, type:'low'}))
+  ];
+  merged.sort((a,b)=>a.index-b.index);
+  let zigzag = [];
+  for(const pt of merged){
+    if(zigzag.length===0){ zigzag.push(pt); continue; }
+    const last = zigzag[zigzag.length-1];
+    if(last.type===pt.type){
+      // 連續同類型的擺動點,只留比較極端的那一個
+      if(pt.type==='high' && pt.price>last.price) zigzag[zigzag.length-1] = pt;
+      else if(pt.type==='low' && pt.price<last.price) zigzag[zigzag.length-1] = pt;
+    } else {
+      zigzag.push(pt);
+    }
+  }
+  return zigzag;
+}
+
+// 123法則:看漲=低點(1)→高點(2)→更高的低點(3),等突破高點(2)確認反轉;看跌則相反
+// 經典轉折型態:頭肩頂/底、雙頂/底、三重頂/底——公開的通用技術分析型態,
+// 用已經算好的擺動高低點鋸齒序列去比對,不需要額外抓資料
+function detectClassicPattern(candles){
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  const zigzag = buildZigzag(swingHighs, swingLows);
+  const lastClose = parseFloat(candles[candles.length-1][4]);
+
+  if(zigzag.length>=5){
+    const pts = zigzag.slice(-5);
+    if(pts[0].type==='low'&&pts[1].type==='high'&&pts[2].type==='low'&&pts[3].type==='high'&&pts[4].type==='low'){
+      const [l1,h1,l2,h2,l3] = pts;
+      const neckline = Math.max(h1.price,h2.price);
+      const shoulderDiff = Math.abs(l1.price-l3.price)/l1.price;
+      if(l2.price<l1.price && l2.price<l3.price && shoulderDiff<0.05){
+        return { type:'head_shoulders_bottom', neckline, confirmed: lastClose>neckline };
+      }
+      if(shoulderDiff<0.03 && Math.abs(l2.price-l1.price)/l1.price<0.03){
+        return { type:'triple_bottom', neckline, confirmed: lastClose>neckline };
+      }
+    }
+    if(pts[0].type==='high'&&pts[1].type==='low'&&pts[2].type==='high'&&pts[3].type==='low'&&pts[4].type==='high'){
+      const [h1,l1,h2,l2,h3] = pts;
+      const neckline = Math.min(l1.price,l2.price);
+      const shoulderDiff = Math.abs(h1.price-h3.price)/h1.price;
+      if(h2.price>h1.price && h2.price>h3.price && shoulderDiff<0.05){
+        return { type:'head_shoulders_top', neckline, confirmed: lastClose<neckline };
+      }
+      if(shoulderDiff<0.03 && Math.abs(h2.price-h1.price)/h1.price<0.03){
+        return { type:'triple_top', neckline, confirmed: lastClose<neckline };
+      }
+    }
+  }
+  if(zigzag.length>=3){
+    const pts = zigzag.slice(-3);
+    if(pts[0].type==='low'&&pts[1].type==='high'&&pts[2].type==='low'){
+      if(Math.abs(pts[0].price-pts[2].price)/pts[0].price<0.03){
+        return { type:'double_bottom', neckline: pts[1].price, confirmed: lastClose>pts[1].price };
+      }
+    }
+    if(pts[0].type==='high'&&pts[1].type==='low'&&pts[2].type==='high'){
+      if(Math.abs(pts[0].price-pts[2].price)/pts[0].price<0.03){
+        return { type:'double_top', neckline: pts[1].price, confirmed: lastClose<pts[1].price };
+      }
+    }
+  }
+  return null;
+}
+
+function detect123Pattern(candles){
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  const zigzag = buildZigzag(swingHighs, swingLows);
+  if(zigzag.length<3) return null;
+  const [p1, p2, p3] = zigzag.slice(-3);
+  const lastClose = parseFloat(candles[candles.length-1][4]);
+
+  if(p1.type==='low' && p2.type==='high' && p3.type==='low' && p3.price>p1.price){
+    const triggerPrice = p2.price;
+    return { type:'bullish', p1price:p1.price, p2price:p2.price, p3price:p3.price, triggerPrice, confirmed: lastClose>triggerPrice, stopRef: p3.price };
+  }
+  if(p1.type==='high' && p2.type==='low' && p3.type==='high' && p3.price<p1.price){
+    const triggerPrice = p2.price;
+    return { type:'bearish', p1price:p1.price, p2price:p2.price, p3price:p3.price, triggerPrice, confirmed: lastClose<triggerPrice, stopRef: p3.price };
+  }
+  return null;
+}
+
+// ---------- 收斂/平行型態:三角收斂、旗型、楔型(可能是中繼,也可能是反轉)----------
+// 用最近兩個擺動高點算「壓力線」斜率、最近兩個擺動低點算「支撐線」斜率,
+// 用兩條線的斜率形狀判斷是哪種型態,再跟型態出現「之前」的原本趨勢方向比較,
+// 決定這是順著原趨勢走的「中繼」,還是逆著原趨勢走的「反轉」——這跟課程教材裡
+// 中繼型態(三角收斂/旗型/楔型同一張)和反轉型態(楔型也會出現在底/頂部型態那張)的邏輯一致:
+// 型態本身的形狀只決定「預期怎麼突破」,是中繼還是反轉要另外看原本趨勢。
+function detectConvergencePattern(candles){
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  if(swingHighs.length<2 || swingLows.length<2) return null;
+
+  const h2 = swingHighs[swingHighs.length-1], h1 = swingHighs[swingHighs.length-2];
+  const l2 = swingLows[swingLows.length-1], l1 = swingLows[swingLows.length-2];
+  if(h1.index===h2.index || l1.index===l2.index) return null;
+
+  const slopeHigh = (h2.price - h1.price) / (h2.index - h1.index);
+  const slopeLow  = (l2.price - l1.price) / (l2.index - l1.index);
+  const refPrice = (h2.price + l2.price) / 2;
+  if(refPrice<=0) return null;
+  const flatThresh = refPrice * 0.0006; // 幾乎持平的判斷門檻,依價位正規化
+
+  const highFlat = Math.abs(slopeHigh) < flatThresh;
+  const lowFlat  = Math.abs(slopeLow) < flatThresh;
+
+  let shape = null;
+  if(highFlat && slopeLow>0) shape = 'ascTriangle';
+  else if(lowFlat && slopeHigh<0) shape = 'descTriangle';
+  else if(slopeHigh<0 && slopeLow>0) shape = 'symTriangle';
+  else if(slopeHigh>0 && slopeLow>0) shape = 'risingWedge';
+  else if(slopeHigh<0 && slopeLow<0) shape = 'fallingWedge';
+  else if(!highFlat && !lowFlat && Math.sign(slopeHigh)===Math.sign(slopeLow) && Math.abs(slopeHigh-slopeLow)<flatThresh*2){
+    shape = slopeHigh<0 ? 'flagDown' : 'flagUp';
+  }
+  if(!shape) return null;
+
+  // 型態起點之前的價格,拿來判斷「原本趨勢」方向(往前抓20根K棒比較)
+  const patternStartIdx = Math.min(h1.index, l1.index);
+  const priorIdx = Math.max(0, patternStartIdx - 20);
+  const priorPrice = parseFloat(candles[priorIdx][4]);
+  const startPrice = parseFloat(candles[patternStartIdx][4]);
+  const priorTrend = startPrice>priorPrice*1.01 ? 'up' : startPrice<priorPrice*0.99 ? 'down' : 'flat';
+
+  const meta = {
+    ascTriangle:  { name:'上升三角', expectedBreak:'up' },
+    descTriangle: { name:'下降三角', expectedBreak:'down' },
+    symTriangle:  { name:'對稱三角(三角收斂)', expectedBreak: priorTrend==='down' ? 'down' : 'up' },
+    risingWedge:  { name:'上升楔型', expectedBreak:'down' },
+    fallingWedge: { name:'下降楔型', expectedBreak:'up' },
+    flagUp:       { name:'旗型(平行上傾)', expectedBreak: priorTrend==='down' ? 'down' : 'up' },
+    flagDown:     { name:'旗型(平行下傾)', expectedBreak: priorTrend==='up' ? 'up' : 'down' }
+  };
+  const info = meta[shape];
+  const role = priorTrend==='flat' ? 'unknown' : (info.expectedBreak===priorTrend ? 'continuation' : 'reversal');
+
+  const resistanceRef = h2.price, supportRef = l2.price;
+  const baseRange = Math.abs(h1.price - l1.price); // 對應課程「基準」:型態起點的高度
+  const lastClose = parseFloat(candles[candles.length-1][4]);
+  const triggerPrice = info.expectedBreak==='up' ? resistanceRef : supportRef;
+  const confirmed = info.expectedBreak==='up' ? lastClose>triggerPrice : lastClose<triggerPrice;
+  const targetPrice = info.expectedBreak==='up' ? triggerPrice + baseRange : triggerPrice - baseRange;
+  const stopRef = info.expectedBreak==='up' ? supportRef : resistanceRef;
+
+  return { shape, name: info.name, priorTrend, role, expectedBreak: info.expectedBreak,
+    triggerPrice, confirmed, targetPrice, stopRef, baseRange };
+}
+
+// ---------- 供需區(Supply/Demand Zone)----------
+// 邏輯:先有一段「窄幅盤整(base)」,接著出現一段力度明顯比平常大的單邊噴出(impulse)。
+// 這段盤整區間就是供需區:噴出向上 → 這裡是「需求區(demand)」,之後價格拉回這裡是潛在買點參考;
+// 噴出向下 → 這裡是「供給區(supply)」,之後價格反彈到這裡是潛在賣點參考。
+// 只抓最近一段最新出現的供需區,離現價越近代表越可能被測試到,越有參考意義。
+function detectSupplyDemandZone(candles){
+  const n = candles.length;
+  if(n < 30) return null;
+  const closes = candles.map(c=>parseFloat(c[4]));
+  const highs = candles.map(c=>parseFloat(c[2]));
+  const lows = candles.map(c=>parseFloat(c[3]));
+  const ranges = candles.map((c,i)=>highs[i]-lows[i]);
+  const atr = ranges.slice(-30).reduce((a,b)=>a+b,0)/30;
+  if(atr<=0) return null;
+
+  const BASE_MAX_RATIO = 0.6;   // base裡每根K棒的高低範圍要小於0.6*ATR才算「窄幅盤整」
+  const IMPULSE_MIN_RATIO = 2.2; // 緊接著的噴出段總幅度要超過2.2*ATR才算「明顯噴出」
+
+  for(let end=n-6; end>=15; end--){
+    for(let baseLen=4; baseLen>=1; baseLen--){
+      const baseStart = end - baseLen;
+      if(baseStart < 10) continue;
+      let isBase = true;
+      for(let i=baseStart;i<end;i++){ if(ranges[i] > atr*BASE_MAX_RATIO){ isBase=false; break; } }
+      if(!isBase) continue;
+
+      const baseHigh = Math.max(...highs.slice(baseStart,end));
+      const baseLow = Math.min(...lows.slice(baseStart,end));
+      const afterEnd = Math.min(n-1, end+8);
+      if(afterEnd<=end) continue;
+      const moveUp = Math.max(...highs.slice(end,afterEnd+1)) - baseLow;
+      const moveDown = baseHigh - Math.min(...lows.slice(end,afterEnd+1));
+
+      let zoneType = null;
+      if(moveUp > atr*IMPULSE_MIN_RATIO && moveUp > moveDown) zoneType = 'demand';
+      else if(moveDown > atr*IMPULSE_MIN_RATIO && moveDown > moveUp) zoneType = 'supply';
+      if(!zoneType) continue;
+
+      const lastClose = closes[n-1];
+      const distancePct = zoneType==='demand'
+        ? ((lastClose - baseHigh)/baseHigh*100)
+        : ((baseLow - lastClose)/baseLow*100);
+      const retested = zoneType==='demand' ? lastClose <= baseHigh*1.01 : lastClose >= baseLow*0.99;
+
+      return {
+        type: zoneType, zoneHigh: baseHigh, zoneLow: baseLow, baseLen,
+        distancePct, retested,
+        suggestEntry: zoneType==='demand' ? baseLow : baseHigh
+      };
+    }
+  }
+  return null;
+}
+
+// ---------- ABCD 諧波型態 ----------
+// 用最近4個交替出現的擺動高低點依序當作A、B、C、D,檢查價格比例:
+// BC通常是AB的0.55~0.85回撤(涵蓋常見的0.618~0.786),CD通常是BC的1.1~1.8倍延伸
+// (涵蓋常見的1.272~1.618)。兩個比例都在範圍內才視為型態成立,D點是型態說的
+// 「進場/反轉」參考位置。這只是形狀比對,不是保證會照這個型態走。
+function detectABCDPattern(candles){
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  const zigzag = buildZigzag(swingHighs, swingLows);
+  if(zigzag.length < 4) return null;
+  const [A,B,C,D] = zigzag.slice(-4);
+
+  const AB = Math.abs(B.price - A.price);
+  const BC = Math.abs(C.price - B.price);
+  const CD = Math.abs(D.price - C.price);
+  if(AB<=0 || BC<=0) return null;
+
+  const bcRetrace = BC / AB;
+  const cdExtension = CD / BC;
+  const bcOk = bcRetrace >= 0.55 && bcRetrace <= 0.85;
+  const cdOk = cdExtension >= 1.1 && cdExtension <= 1.8;
+  if(!bcOk || !cdOk) return null;
+
+  const bullish = D.type==='low' && A.price<B.price && C.price<B.price;
+  const bearish = D.type==='high' && A.price>B.price && C.price>B.price;
+  const dir = bullish ? 'bull' : bearish ? 'bear' : null;
+  if(!dir) return null;
+
+  const lastClose = parseFloat(candles[candles.length-1][4]);
+  return {
+    dir, points:{A,B,C,D}, bcRetrace, cdExtension, dPrice: D.price,
+    nearD: dir==='bull' ? lastClose <= D.price*1.01 : lastClose >= D.price*0.99
+  };
+}
+
+// ---------- Order Block + BOS(結構破壞)簡化版 ----------
+// 完整ICT概念很依賴人工判斷,這裡用固定規則做簡化版:
+// BOS = 最新擺動高點超過前一個高點(向上BOS)、或最新擺動低點跌破前一個低點(向下BOS);
+// Order Block = 這次突破發生「之前」最後一根反方向的K棒(向上BOS找最後一根收黑K,向下BOS找最後一根收紅K),
+// 這根反方向K棒的高低範圍,就是課程裡說的「訂單塊」區間,之後價格回測到這裡是潛在進場參考。
+function detectOrderBlockBOS(candles){
+  const n = candles.length;
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  if(swingHighs.length<2 && swingLows.length<2) return null;
+
+  let bosType = null, bosLevel = null, bosIndex = -1;
+  if(swingHighs.length>=2){
+    const h1 = swingHighs[swingHighs.length-2], h2 = swingHighs[swingHighs.length-1];
+    if(h2.price > h1.price){ bosType='bull'; bosLevel=h1.price; bosIndex=h2.index; }
+  }
+  if(swingLows.length>=2){
+    const l1 = swingLows[swingLows.length-2], l2 = swingLows[swingLows.length-1];
+    if(l2.price < l1.price && l2.index > bosIndex){ bosType='bear'; bosLevel=l1.price; bosIndex=l2.index; }
+  }
+  if(!bosType) return null;
+
+  let obIndex = null;
+  for(let i=bosIndex-1; i>=Math.max(0,bosIndex-15); i--){
+    const o = parseFloat(candles[i][1]), c = parseFloat(candles[i][4]);
+    if(bosType==='bull' && c<o){ obIndex=i; break; }
+    if(bosType==='bear' && c>o){ obIndex=i; break; }
+  }
+  if(obIndex==null) return null;
+
+  const obHigh = parseFloat(candles[obIndex][2]);
+  const obLow = parseFloat(candles[obIndex][3]);
+  const lastClose = parseFloat(candles[n-1][4]);
+  const retested = bosType==='bull'
+    ? (lastClose <= obHigh*1.01 && lastClose >= obLow*0.97)
+    : (lastClose >= obLow*0.99 && lastClose <= obHigh*1.03);
+  const distancePct = bosType==='bull' ? ((lastClose-obHigh)/obHigh*100) : ((obLow-lastClose)/obLow*100);
+
+  return { bosType, bosLevel, obHigh, obLow, retested, distancePct };
+}
+
+// ---------- 多重匯聚確認(RSI + 趨勢線 + 關鍵價位)----------
+// 分開看RSI、趨勢線、關鍵價位三個東西意義有限,但如果「同一個方向」同時出現多個訊號在同一個價位附近,
+// 代表這裡有比較多獨立理由支持反轉或延續,課程裡說的「多重匯聚確認交易準確率會提升」就是這個概念。
+// 這裡回傳「符合幾項」加上各自的說明,不是保證,只是把匯聚程度量化出來給你參考。
+function computeConfluenceScore(candles, dir){
+  const n = candles.length;
+  if(n<20) return { score:0, hits:[] };
+  const closes = candles.map(c=>parseFloat(c[4]));
+  const rsiVal = rsi(closes,14);
+  const lastClose = closes[n-1];
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  const hits = [];
+
+  if(dir==='long' && rsiVal<=35) hits.push(`RSI偏低(${rsiVal.toFixed(1)})`);
+  if(dir==='short' && rsiVal>=65) hits.push(`RSI偏高(${rsiVal.toFixed(1)})`);
+
+  if(dir==='long' && swingLows.length>=2){
+    const l1=swingLows[swingLows.length-2], l2=swingLows[swingLows.length-1];
+    if(l2.index>l1.index){
+      const slope=(l2.price-l1.price)/(l2.index-l1.index);
+      const projected = l2.price + slope*(n-1-l2.index);
+      if(projected>0 && Math.abs(lastClose-projected)/projected < 0.015) hits.push('價格貼近上升趨勢線');
+    }
+  }
+  if(dir==='short' && swingHighs.length>=2){
+    const h1=swingHighs[swingHighs.length-2], h2=swingHighs[swingHighs.length-1];
+    if(h2.index>h1.index){
+      const slope=(h2.price-h1.price)/(h2.index-h1.index);
+      const projected = h2.price + slope*(n-1-h2.index);
+      if(projected>0 && Math.abs(lastClose-projected)/projected < 0.015) hits.push('價格貼近下降趨勢線');
+    }
+  }
+
+  if(dir==='long' && swingLows.length>=1){
+    const nearestLow = swingLows[swingLows.length-1].price;
+    if(nearestLow>0 && Math.abs(lastClose-nearestLow)/nearestLow < 0.01) hits.push('價格接近前低關鍵價位');
+  }
+  if(dir==='short' && swingHighs.length>=1){
+    const nearestHigh = swingHighs[swingHighs.length-1].price;
+    if(nearestHigh>0 && Math.abs(lastClose-nearestHigh)/nearestHigh < 0.01) hits.push('價格接近前高關鍵價位');
+  }
+
+  return { score: hits.length, hits };
+}
+
+// ---------- 爆漲/爆跌偵測 ----------
+// 邏輯:找最近一段窗口內(10根K棒)價格波動最劇烈的單向移動,跟平常的波動幅度(ATR)比較,
+// 如果這段移動超過平常的4倍以上,就算「暴漲/暴跌」。暴漲暴跌後常常會有反向回吐(不是保證),
+// 這裡順便算出「目前價格回吐了這段暴衝的百分之多少」,方便判斷是不是已經吐夠了或還在半路上。
+function detectExtremeMove(candles){
+  const n = candles.length;
+  if(n<35) return null;
+  const closes = candles.map(c=>parseFloat(c[4]));
+  const highs = candles.map(c=>parseFloat(c[2]));
+  const lows = candles.map(c=>parseFloat(c[3]));
+  const ranges = highs.map((h,i)=>h-lows[i]);
+  const atr = ranges.slice(n-35,n-10).reduce((a,b)=>a+b,0)/25; // 用暴衝之前的一段當平常波動基準,避免被暴衝本身汙染
+  if(!(atr>0)) return null;
+
+  const window = 10;
+  const recentHighs = highs.slice(n-window);
+  const recentLows = lows.slice(n-window);
+  let maxIdx=0, minIdx=0;
+  for(let i=1;i<recentHighs.length;i++){ if(recentHighs[i]>recentHighs[maxIdx]) maxIdx=i; }
+  for(let i=1;i<recentLows.length;i++){ if(recentLows[i]<recentLows[minIdx]) minIdx=i; }
+
+  let moveType=null, startPrice=0, endPrice=0;
+  if(minIdx < maxIdx){ moveType='pump'; startPrice=recentLows[minIdx]; endPrice=recentHighs[maxIdx]; }
+  else if(maxIdx < minIdx){ moveType='crash'; startPrice=recentHighs[maxIdx]; endPrice=recentLows[minIdx]; }
+  if(!moveType) return null;
+
+  const moveSize = Math.abs(endPrice-startPrice);
+  const atrMultiple = moveSize/atr;
+  if(atrMultiple < 4) return null; // 沒到平常波動的4倍,不算「暴」
+
+  const movePct = (moveSize/startPrice)*100;
+  const lastClose = closes[n-1];
+  const retracePct = moveType==='pump'
+    ? ((endPrice-lastClose)/moveSize)*100
+    : ((lastClose-endPrice)/moveSize)*100;
+
+  return { moveType, movePct, atrMultiple, startPrice, endPrice, retracePct: Math.max(0,Math.min(100,retracePct)) };
+}
+
+function computeEntryLevels(candles){
+  const { swingHighs, swingLows } = findSwings(candles, 3);
+  if(swingHighs.length<2 || swingLows.length<2) return null;
+
+  const lastHigh = swingHighs[swingHighs.length-1], prevHigh = swingHighs[swingHighs.length-2];
+  const lastLow = swingLows[swingLows.length-1], prevLow = swingLows[swingLows.length-2];
+
+  let structure = 'mixed';
+  if(lastHigh.price>prevHigh.price && lastLow.price>prevLow.price) structure = 'up';
+  else if(lastHigh.price<prevHigh.price && lastLow.price<prevLow.price) structure = 'down';
+
+  let oteZone = null, stopLoss = null, legFrom = null, legTo = null, side = null, takeProfits = null, entryPrice = null, riskRewardToTp1 = null;
+
+  if(structure==='up' && lastLow.index > prevLow.index){
+    // 上升結構:抓最近一次由低點到高點的推動段,算61.8%~79%回撤區間當參考進場區
+    const recentHigh = swingHighs.filter(h=>h.index>lastLow.index).pop();
+    if(recentHigh){
+      const range = recentHigh.price - lastLow.price;
+      oteZone = { low: recentHigh.price - range*0.79, high: recentHigh.price - range*0.618 };
+      stopLoss = lastLow.price * 0.997; // 前一個擺動低點下方一點緩衝,對應教學圖的結構性停損
+      legFrom = lastLow.price; legTo = recentHigh.price;
+      side = 'long';
+      entryPrice = (oteZone.low + oteZone.high) / 2;
+      // 止盈參考:先看能不能回到剛剛那個推動段的高點(目標一),再往上用等幅/黃金比例投射(目標二、三)
+      takeProfits = [
+        { label: '目標一(回測前波高點)', price: legTo },
+        { label: '目標二(等幅推動0.618倍)', price: legTo + range*0.618 },
+        { label: '目標三(等幅推動1倍)', price: legTo + range*1.0 }
+      ];
+    }
+  } else if(structure==='down' && lastHigh.index > prevHigh.index){
+    const recentLow = swingLows.filter(l=>l.index>lastHigh.index).pop();
+    if(recentLow){
+      const range = lastHigh.price - recentLow.price;
+      oteZone = { low: recentLow.price + range*0.618, high: recentLow.price + range*0.79 };
+      stopLoss = lastHigh.price * 1.003;
+      legFrom = lastHigh.price; legTo = recentLow.price;
+      side = 'short';
+      entryPrice = (oteZone.low + oteZone.high) / 2;
+      takeProfits = [
+        { label: '目標一(回測前波低點)', price: legTo },
+        { label: '目標二(等幅推動0.618倍)', price: legTo - range*0.618 },
+        { label: '目標三(等幅推動1倍)', price: legTo - range*1.0 }
+      ];
+    }
+  }
+
+  if(entryPrice!=null && stopLoss!=null && takeProfits){
+    const risk = Math.abs(entryPrice - stopLoss);
+    const rewardToTp1 = Math.abs(takeProfits[0].price - entryPrice);
+    riskRewardToTp1 = risk>0 ? rewardToTp1/risk : null;
+  }
+
+  return { structure, side, oteZone, entryPrice, stopLoss, takeProfits, riskRewardToTp1, legFrom, legTo, lastSwingHigh: lastHigh.price, lastSwingLow: lastLow.price };
+}
+
+function classifyFromCandles(candles){
+  const closes = candles.map(c=>parseFloat(c[4]));
+  const volumes = candles.map(c=>parseFloat(c[5]));
+  const n = closes.length;
+  if(n<105) return null;
+  const ma10 = sma(closes,10,n-1), ma30 = sma(closes,30,n-1), ma50 = sma(closes,50,n-1), ma100 = sma(closes,100,n-1);
+  const lastClose = closes[n-1];
+  const rsiVal = rsi(closes,14);
+  const roc = ((lastClose - closes[n-21]) / closes[n-21]) * 100;
+  const avgVol = sma(volumes,20,n-2);
+  const volExpansion = avgVol>0 ? volumes[n-1]/avgVol : 1;
+  const trend = trendStrength(candles,14);
+  const bb = bollingerBands(closes, 20, n-1);
+  const bbPercentB = (bb.upper-bb.lower)>0 ? (lastClose-bb.lower)/(bb.upper-bb.lower) : 0.5;
+  const buyRatio = buyPressureRatio(candles[n-1], volumes[n-1]);
+  // 動能改成「相對這個資產自己近期典型波動幅度(ATR%)」正規化,而不是用固定除數,
+  // 這樣同一套邏輯可以套用在波動幅度差異很大的不同市場(加密貨幣、黃金、美股)上
+  const atrPct14 = atrPercent(candles, 14);
+  const normalizedRoc = atrPct14>0 ? Math.max(-1.5, Math.min(1.5, roc/(atrPct14*3))) : 0;
+
+  // 大趨勢方向:用50期/100期均線的排列跟價格位置判斷「現在大方向是漲是跌還是盤整轉折中」,
+  // 跟上面的短線多空訊號是分開的兩件事——短線訊號可能跟大趨勢同向,也可能是逆勢反彈/回檔
+  let majorTrend = 'range';
+  if(ma50 > ma100 && lastClose > ma50) majorTrend = 'up';
+  else if(ma50 < ma100 && lastClose < ma50) majorTrend = 'down';
+  const majorTrendStrengthPct = ma100>0 ? Math.abs(ma50-ma100)/ma100*100 : 0;
+
+  let score = 0;
+  score += ma10>ma30 ? 1 : -1;
+  if(rsiVal>55) score+=1; else if(rsiVal<45) score-=1;
+  score += lastClose>ma10 ? 0.5 : -0.5;
+  score += normalizedRoc;
+  // 布林帶突破:收盤價站上/跌破布林上下軌,視為動能確認
+  if(lastClose > bb.upper) score += 0.5;
+  else if(lastClose < bb.lower) score -= 0.5;
+  // 主動買方成交量比例:買盤明顯強於賣盤(或反之)時加減分,沒有這欄資料時不影響分數
+  if(buyRatio!==null){
+    if(buyRatio>0.58) score += 0.5;
+    else if(buyRatio<0.42) score -= 0.5;
+  }
+  const volConfirm = volExpansion>1.4;
+  if(volConfirm) score *= 1.15;
+
+  const agree = [ma10>ma30, rsiVal>50, lastClose>ma10, roc>0].filter(Boolean).length;
+  const alignment = Math.max(agree,4-agree)/4;
+  const trendConfirm = trend>=20;
+  let confidence = Math.min(Math.round(30 + alignment*50 + (volConfirm?10:0) + (trendConfirm?5:-10)), 92);
+  confidence = Math.max(confidence, 15);
+
+  const mag = Math.abs(score);
+  let dir='neutral', tier='none';
+  if(mag>=1){
+    dir = score>0?'long':'short';
+    // 盤整期(趨勢強度不足)即使分數夠高,也不給「強訊號」,避免假訊號
+    // 另外要求「正規化動能」本身要有實質貢獻,不能只靠均線/RSI/站上均線這幾個高度連動的
+    // 二元指標剛好同時對齊就湊到門檻——那種情況常常是雜訊,不是真的價格位移
+    let strongOk = mag>=2.3 && trendConfirm && Math.abs(normalizedRoc)>=0.5;
+    // 幣圈長期結構偏多頭,做空訊號不能跟做多鏡射同一套標準:
+    // 額外要求收盤價低於50期均線,確認真的處於較長期下跌結構,而不是短線回檔就喊空
+    if(dir==='short' && strongOk){
+      strongOk = lastClose < ma50;
+    }
+    tier = strongOk ? 'strong' : 'weak';
+  }
+
+  return { score, dir, tier, confidence, rsi:rsiVal, roc, volExpansion, trend, bbPercentB, bbWidthPct: bb.widthPct, buyRatio, majorTrend, majorTrendStrengthPct };
+}
+
+function confirmInterval(primary){
+  return primary==='4h' ? '1d' : '4h';
+}
+
+// 統一把時間值(數字毫秒或日期字串)轉成毫秒時間戳,方便比對不同資料來源的K棒時間
+function toTimestamp(t){
+  return typeof t==='number' ? t : new Date(t).getTime();
+}
+
+// confirmCandles為選填:若有提供,會用兩根指標同步的方式,要求長週期方向也一致,
+// 才算「強訊號」——跟即時畫面上「強訊號」的認定標準保持一致,回測數字才有意義
+function backtestSymbol(candles, lookahead, confirmCandles){
+  const closes = candles.map(c=>parseFloat(c[4]));
+  const n = closes.length;
+  const result = {
+    long:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0},
+    short:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0},
+    firstHalf:{count:0,correct:0}, secondHalf:{count:0,correct:0}
+  };
+  const start = 105, end = n-lookahead;
+  const mid = Math.floor((start + end) / 2);
+  let confirmPtr = -1;
+  for(let i=start; i<end; i++){
+    const c = classifyFromCandles(candles.slice(0, i+1));
+    if(!c || c.tier!=='strong') continue;
+
+    if(confirmCandles){
+      const t = toTimestamp(candles[i][0]);
+      while(confirmPtr+1 < confirmCandles.length && toTimestamp(confirmCandles[confirmPtr+1][0]) <= t){
+        confirmPtr++;
+      }
+      if(confirmPtr < 104) continue; // 長週期歷史還不夠,無法判斷,跳過
+      const cConfirm = classifyFromCandles(confirmCandles.slice(0, confirmPtr+1));
+      const alignedHere = cConfirm && cConfirm.dir===c.dir && c.dir!=='neutral';
+      if(!alignedHere) continue; // 雙週期不一致,不算強訊號,跳過此次
+    }
+
+    const future = closes[i+lookahead];
+    const now = closes[i];
+    const pctMove = ((future-now)/now)*100;
+    const moved = future > now;
+    const correct = c.dir==='long' ? moved : !moved;
+    const bucket = c.dir==='long' ? result.long : result.short;
+    bucket.count++;
+    if(correct){ bucket.correct++; }
+    // 以「做多方向」為基準記錄實際報酬率,做空訊號時方向要反過來看
+    const signedReturn = c.dir==='long' ? pctMove : -pctMove;
+    if(signedReturn>=0){ bucket.winSum += signedReturn; bucket.winN++; }
+    else { bucket.lossSum += Math.abs(signedReturn); bucket.lossN++; }
+    const half = i < mid ? result.firstHalf : result.secondHalf;
+    half.count++; if(correct) half.correct++;
+  }
+  return result;
+}
+
+// ---------- Fetch ----------
+const BINANCE_HOSTS = ['https://data-api.binance.vision', 'https://api.binance.com'];
+
+async function fetchWithFallback(path){
+  let lastErr = null;
+  for(const host of BINANCE_HOSTS){
+    try{
+      const res = await fetch(host + path);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }catch(e){ lastErr = e; }
+  }
+  throw new Error('無法連線到幣安行情API(可能是網路問題或CORS限制):' + (lastErr ? lastErr.message : '未知錯誤'));
+}
+
+// BingX的API伺服器沒有開放讓瀏覽器直接跨網域讀取回應(沒有CORS授權標頭),
+// 跟Binance不一樣,單純換連線網址沒有用,需要透過公開的CORS代理伺服器中轉才能拿到資料。
+// 這裡準備了「先試直連、失敗再依序試幾個公開代理」的機制,盡量提高連線成功率;
+// 公開代理服務本身不是我們自己架設的,偶爾可能不穩定、被限流,或直接卡住不回應——
+// 所以每個嘗試都加上逾時保護(10秒沒回應就直接放棄換下一個),避免整個掃描卡死不動。
+const CORS_PROXIES = [
+  url => url, // 先試直連,萬一BingX哪天開放CORS就不用繞路
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://thingproxy.freeboard.io/fetch/${url}`
+];
+async function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), ms);
+  try{
+    return await fetch(url, { signal: ctrl.signal });
+  }finally{
+    clearTimeout(timer);
+  }
+}
+async function fetchBingXJson(url){
+  let lastErr = null;
+  for(const buildUrl of CORS_PROXIES){
+    try{
+      const res = await fetchWithTimeout(buildUrl(url), 7000); // 縮短單次逾時,失敗時能更快換下一個代理
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    }catch(e){ lastErr = e; }
+  }
+  throw new Error('無法連線到BingX行情API(可能是網路問題、CORS限制,或代理伺服器暫時不穩定):' + (lastErr ? lastErr.message : '未知錯誤'));
+}
+
+// 將不同交易所的K棒格式統一轉成 [time, open, high, low, close, volume, ...] 陣列
+function normalizeCandle(k){
+  if(Array.isArray(k)) return k;
+  return [k.time || k.openTime || k.t, k.open || k.o, k.high || k.h, k.low || k.l, k.close || k.c, k.volume || k.v];
+}
+
+async function fetchTopSymbolsBinance(count){
+  const data = await fetchWithFallback('/api/v3/ticker/24hr');
+  return data.filter(d=>d.symbol.endsWith('USDT') && !d.symbol.includes('UPUSDT') && !d.symbol.includes('DOWNUSDT'))
+    .sort((a,b)=>parseFloat(b.quoteVolume)-parseFloat(a.quoteVolume))
+    .slice(0,count)
+    .map(d=>({symbol:d.symbol, display:d.symbol.replace('USDT',''), change24h: ((parseFloat(d.lastPrice)-parseFloat(d.openPrice))/parseFloat(d.openPrice))*100}));
+}
+// 去掉最後一根「可能還沒收盤、正在形成中」的K棒,只用確定收盤的資料算指標,
+// 避免量能、價格變化等數字被一根成交量還很少的未完成K棒拉偏
+function dropUnclosedCandle(candles){
+  return candles.length>1 ? candles.slice(0, -1) : candles;
+}
+
+async function fetchKlinesBinance(symbol, interval, limit=100){
+  const data = await fetchWithFallback(`/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+  return dropUnclosedCandle(data);
+}
+
+async function fetchTopSymbolsBingX(count){
+  const json = await fetchBingXJson(`https://open-api.bingx.com/openApi/spot/v1/ticker/24hr?timestamp=${Date.now()}`);
+  const list = Array.isArray(json) ? json : (json.data || []);
+  return list.filter(d=>d.symbol && d.symbol.endsWith('-USDT'))
+    .map(d=>{
+      const last = parseFloat(d.lastPrice ?? d.close ?? d.trades ?? 0);
+      const open = parseFloat(d.openPrice ?? d.open ?? last);
+      const qv = parseFloat(d.quoteVolume ?? d.volume ?? 0);
+      return { symbol: d.symbol, display: d.symbol.replace('-USDT',''), quoteVolume: qv, change24h: open? ((last-open)/open*100) : 0 };
+    })
+    .sort((a,b)=>b.quoteVolume-a.quoteVolume)
+    .slice(0,count);
+}
+async function fetchKlinesBingX(symbol, interval, limit=100){
+  const json = await fetchBingXJson(`https://open-api.bingx.com/openApi/spot/v2/market/kline?symbol=${symbol}&interval=${interval}&limit=${limit}&timestamp=${Date.now()}`);
+  const list = Array.isArray(json) ? json : (json.data || []);
+  return dropUnclosedCandle(list.map(normalizeCandle));
+}
+
+// ---------- BingX 永續合約(USDT本位合約)----------
+// 端點跟現貨不同(路徑是 /openApi/swap/... 而不是 /openApi/spot/...),symbol格式一樣是「BTC-USDT」這種帶槓線的寫法。
+async function fetchTopSymbolsBingXSwap(count){
+  const json = await fetchBingXJson(`https://open-api.bingx.com/openApi/swap/v2/quote/ticker?timestamp=${Date.now()}`);
+  const list = Array.isArray(json) ? json : (json.data || []);
+  return list.filter(d=>d.symbol && d.symbol.endsWith('-USDT'))
+    .map(d=>{
+      const last = parseFloat(d.lastPrice ?? d.close ?? 0);
+      const open = parseFloat(d.openPrice ?? d.open ?? last);
+      const qv = parseFloat(d.quoteVolume ?? d.turnover ?? d.volume ?? 0);
+      return { symbol: d.symbol, display: d.symbol.replace('-USDT',''), quoteVolume: qv, change24h: open? ((last-open)/open*100) : 0 };
+    })
+    .sort((a,b)=>b.quoteVolume-a.quoteVolume)
+    .slice(0,count);
+}
+async function fetchKlinesBingXSwap(symbol, interval, limit=100){
+  const json = await fetchBingXJson(`https://open-api.bingx.com/openApi/swap/v3/quote/klines?symbol=${symbol}&interval=${interval}&limit=${limit}&timestamp=${Date.now()}`);
+  const list = Array.isArray(json) ? json : (json.data || []);
+  return dropUnclosedCandle(list.map(normalizeCandle));
+}
+
+function currentSource(){ return document.getElementById('dataSource').value; }
+function isBingxFamily(){ return currentSource()==='bingx' || currentSource()==='bingx-swap'; }
+
+async function fetchTopSymbols(count){
+  const src = currentSource();
+  if(src==='bingx-swap') return fetchTopSymbolsBingXSwap(count);
+  if(src==='bingx') return fetchTopSymbolsBingX(count);
+  return fetchTopSymbolsBinance(count);
+}
+async function fetchKlines(symbol, interval, limit=100){
+  const src = currentSource();
+  if(src==='bingx-swap') return fetchKlinesBingXSwap(symbol, interval, limit);
+  if(src==='bingx') return fetchKlinesBingX(symbol, interval, limit);
+  return fetchKlinesBinance(symbol, interval, limit);
+}
+function toExchangeSymbol(displaySymbolUSDT){
+  // displaySymbolUSDT 例如 "BTCUSDT"(Binance格式),BingX現貨/永續合約都需要轉成 "BTC-USDT"
+  if(isBingxFamily()) return displaySymbolUSDT.replace('USDT','-USDT');
+  return displaySymbolUSDT;
+}
+
+// ---------- 即時訊號追蹤與信心分數自動微調 ----------
+// 原理:每次掃描出現「強訊號+雙週期對齊」時,把當下的方向跟進場價記下來;
+// 過了大約8根K棒的時間之後,拿當時的實際價格核對方向有沒有猜對,累積成「這個市場+這個方向」
+// 的即時勝率。樣本數每滿100筆才開始微調對應信心分數,而且每多100筆才放寬一階調整幅度上限,
+// 避免樣本太少的時候就把運氣當成規律,調過頭。這個過程完全透明,詳細視窗裡會顯示目前用了
+// 多少樣本、調了多少分。
+const LIVE_TIER_STEP = 100;   // 每滿100筆樣本增加一階調整幅度
+const LIVE_ADJ_PER_TIER = 2.5; // 每一階最多可調整的信心分數(百分點)
+const LIVE_ADJ_MAX_TIERS = 4;  // 最多疊加4階(對應400筆樣本),之後不再繼續放大調整幅度
+
+async function loadLiveTrack(){
+  try{
+    const r = await window.storage.get('live-track', false);
+    state.liveTrack = r ? JSON.parse(r.value) : {};
+  }catch(e){ state.liveTrack = {}; }
+  try{
+    const r2 = await window.storage.get('live-signals', false);
+    state.liveSignals = r2 ? JSON.parse(r2.value) : {};
+  }catch(e){ state.liveSignals = {}; }
+}
+async function saveLiveTrack(){
+  try{ await window.storage.set('live-track', JSON.stringify(state.liveTrack), false); }catch(e){ /* ignore */ }
+}
+async function saveLiveSignals(){
+  try{ await window.storage.set('live-signals', JSON.stringify(state.liveSignals), false); }catch(e){ /* ignore */ }
+}
+function intervalToMs(iv){
+  const m = { '15m':15*60000, '30m':30*60000, '1h':3600000, '4h':4*3600000, '1d':86400000 };
+  return m[iv] || 3600000;
+}
+
+// 每次掃描呼叫一次:先核對之前已經到期的待驗證訊號、更新累積勝率,再把這次新出現的
+// 強訊號記錄下來準備之後核對。
+async function evaluateAndRecordLiveSignals(market, results, primaryInt){
+  if(!state.liveSignals[market]) state.liveSignals[market] = [];
+  if(!state.liveTrack[market]) state.liveTrack[market] = {};
+  const pending = state.liveSignals[market];
+  const now = Date.now();
+  const priceMap = {};
+  results.forEach(r=>{ if(r.lastClose!=null) priceMap[r.symbol] = r.lastClose; });
+
+  const stillPending = [];
+  for(const sig of pending){
+    if(now >= sig.checkAt){
+      const nowPrice = priceMap[sig.symbol];
+      if(nowPrice!=null){
+        const won = sig.dir==='long' ? nowPrice>sig.entryPrice : nowPrice<sig.entryPrice;
+        if(!state.liveTrack[market][sig.dir]) state.liveTrack[market][sig.dir] = {count:0, correct:0};
+        state.liveTrack[market][sig.dir].count++;
+        if(won) state.liveTrack[market][sig.dir].correct++;
+        // 核對完就丟棄這筆,不重複計入
+      }else if(now < sig.checkAt + (sig.checkAt-sig.ts)*3){
+        // 這次掃描沒抓到這個標的的最新價,先留著晚一點核對;拖太久(超過原訂時間3倍)還抓不到就放棄
+        stillPending.push(sig);
+      }
+    }else{
+      stillPending.push(sig);
+    }
+  }
+  const trackedKeys = new Set(stillPending.map(s=>s.symbol+':'+s.dir));
+  for(const r of results){
+    if(r.tier==='strong' && r.aligned && (r.dir==='long'||r.dir==='short') && r.lastClose!=null){
+      const sigKey = r.symbol+':'+r.dir;
+      if(!trackedKeys.has(sigKey)){
+        stillPending.push({ symbol:r.symbol, dir:r.dir, entryPrice:r.lastClose, ts:now, checkAt: now + intervalToMs(primaryInt)*8 });
+        trackedKeys.add(sigKey);
+      }
+    }
+  }
+  state.liveSignals[market] = stillPending.slice(-500); // 上限筆數,避免無限成長
+  await saveLiveSignals();
+  await saveLiveTrack();
+}
+
+// 依累積樣本數回傳這個市場+方向該微調多少信心分數;樣本不足100筆時完全不調整(adj=0)
+function getLiveAdjustment(market, dir){
+  const t = state.liveTrack && state.liveTrack[market] && state.liveTrack[market][dir];
+  if(!t || t.count < LIVE_TIER_STEP) return { adj:0, count: t?t.count:0, winRate:null };
+  const winRate = t.correct / t.count * 100;
+  const tierLevel = Math.min(Math.floor(t.count / LIVE_TIER_STEP), LIVE_ADJ_MAX_TIERS);
+  const maxAdjThisTier = tierLevel * LIVE_ADJ_PER_TIER;
+  const deviation = Math.max(-1, Math.min(1, (winRate - 50) / 25)); // 勝率偏離50%的方向與程度
+  const adj = Math.round(deviation * maxAdjThisTier * 10) / 10;
+  return { adj, count: t.count, winRate };
+}
+
+// 把即時追蹤算出來的微調幅度套用到這次掃描結果的信心分數上,並把調整明細存在r.liveAdj上
+// 讓詳細視窗可以透明顯示「用了多少樣本、調了多少分」,不是黑箱亂改。
+function applyLiveAdjustment(results, market){
+  results.forEach(r=>{
+    if(r.dir!=='long' && r.dir!=='short'){ r.liveAdj = null; return; }
+    const info = getLiveAdjustment(market, r.dir);
+    r.liveAdj = info;
+    if(info.adj){
+      r.confidence = Math.max(10, Math.min(97, Math.round((r.confidence + info.adj)*10)/10));
+    }
+  });
+}
+
+// ---------- Persistent history (window.storage) ----------
+async function loadHistory(){
+  try{
+    const r = await window.storage.get('scan-history', false);
+    state.history = r ? JSON.parse(r.value) : [];
+  }catch(e){ state.history = []; }
+}
+async function saveScanSnapshot(results){
+  const strongLong = results.filter(r=>r.tier==='strong'&&r.dir==='long').map(r=>r.symbol);
+  const strongShort = results.filter(r=>r.tier==='strong'&&r.dir==='short').map(r=>r.symbol);
+  state.history.push({ time: Date.now(), strongLong, strongShort });
+  if(state.history.length>30) state.history = state.history.slice(-30);
+  try{ await window.storage.set('scan-history', JSON.stringify(state.history), false); }catch(e){ /* ignore */ }
+}
+// ---------- 歷史表現追蹤(把每次掃描的整體勝率記錄下來畫成折線) ----------
+async function loadPerfHistory(){
+  try{
+    const r = await window.storage.get('perf-history', false);
+    state.perfHistory = r ? JSON.parse(r.value) : { crypto:[], gold:[], stock:[] };
+  }catch(e){ state.perfHistory = { crypto:[], gold:[], stock:[] }; }
+  // 「累積次數」要能一直往上加,不能因為圖表資料被裁減就跟著卡住,所以另外存一個永不裁減的總次數計數器
+  try{
+    const r2 = await window.storage.get('perf-total-count', false);
+    state.perfTotalCount = r2 ? JSON.parse(r2.value) : { crypto:0, gold:0, stock:0 };
+  }catch(e){ state.perfTotalCount = { crypto:0, gold:0, stock:0 }; }
+}
+async function trackPerformance(market, overall, longRate, shortRate, count){
+  if(!state.perfHistory[market]) state.perfHistory[market] = [];
+  state.perfHistory[market].push({ time: Date.now(), overall, longRate, shortRate, count });
+  // 圖表本身只需要顯示最近一段趨勢,抓太多點畫面反而擠不下,所以圖表資料維持有上限(500筆)裁減;
+  // 但「已累積N次紀錄」這個數字改用下面永不裁減的總次數計數器,不會因為圖表裁減就卡在某個數字不動
+  if(state.perfHistory[market].length>500) state.perfHistory[market] = state.perfHistory[market].slice(-500);
+  if(!state.perfTotalCount) state.perfTotalCount = { crypto:0, gold:0, stock:0 };
+  state.perfTotalCount[market] = (state.perfTotalCount[market]||0) + 1;
+  try{ await window.storage.set('perf-history', JSON.stringify(state.perfHistory), false); }catch(e){ /* ignore */ }
+  try{ await window.storage.set('perf-total-count', JSON.stringify(state.perfTotalCount), false); }catch(e){ /* ignore */ }
+  renderPerfChart(market);
+}
+function buildLineChartSVG(points, width=320, height=110){
+  const padL=28, padR=8, padT=10, padB=18;
+  const plotW = width-padL-padR, plotH = height-padT-padB;
+  const xForI = i => padL + (points.length<=1 ? 0 : (i/(points.length-1))*plotW);
+  const yForV = v => padT + plotH - (Math.max(0,Math.min(100,v))/100)*plotH;
+  const path = points.map((p,i)=>`${i===0?'M':'L'}${xForI(i).toFixed(1)},${yForV(p).toFixed(1)}`).join(' ');
+  const y50 = yForV(50).toFixed(1);
+  const lastX = xForI(points.length-1).toFixed(1);
+  const lastY = yForV(points[points.length-1]).toFixed(1);
+  return `<svg viewBox="0 0 ${width} ${height}" style="width:100%;height:${height}px;">
+    <line x1="${padL}" y1="${y50}" x2="${width-padR}" y2="${y50}" stroke="var(--hairline)" stroke-dasharray="3,3" stroke-width="1"/>
+    <text x="2" y="${parseFloat(y50)+4}" font-size="9" fill="var(--text-muted)">50%</text>
+    <text x="2" y="${padT+4}" font-size="9" fill="var(--text-muted)">100%</text>
+    <text x="2" y="${height-padB+4}" font-size="9" fill="var(--text-muted)">0%</text>
+    <path d="${path}" fill="none" stroke="var(--gold)" stroke-width="2"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3" fill="var(--gold)"/>
+  </svg>`;
+}
+function renderPerfChart(market){
+  const el = document.getElementById(market+'-perfChart');
+  if(!el) return;
+  const hist = (state.perfHistory[market]||[]);
+  const totalCount = (state.perfTotalCount && state.perfTotalCount[market]) || hist.length;
+  if(hist.length<2){
+    el.innerHTML = `<div class="empty">還要再累積幾次掃描才能畫出趨勢線(目前 ${totalCount} 筆)</div>`;
+    return;
+  }
+  const overallSeries = hist.map(h=>h.overall).filter(v=>v!=null);
+  const first = hist[0], last = hist[hist.length-1];
+  const firstTime = new Date(first.time).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  const lastTime = new Date(last.time).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  el.innerHTML = `
+    ${buildLineChartSVG(overallSeries)}
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:4px;">
+      <span>${firstTime}</span><span>${lastTime}</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+      最新整體勝率 <b style="color:var(--text-primary);">${last.overall!=null?last.overall.toFixed(1)+'%':'—'}</b> · 已累積 ${totalCount} 次紀錄(圖表僅顯示最近${hist.length}筆趨勢)
+    </div>`;
+}
+
+function computeRepeatBoard(){
+  const counts = {};
+  state.history.forEach(snap=>{
+    snap.strongLong.forEach(s=>{ counts[s]=counts[s]||{long:0,short:0}; counts[s].long++; });
+    snap.strongShort.forEach(s=>{ counts[s]=counts[s]||{long:0,short:0}; counts[s].short++; });
+  });
+  return Object.entries(counts)
+    .map(([sym,c])=>({sym, dominant: c.long>=c.short?'long':'short', count: Math.max(c.long,c.short)}))
+    .filter(x=>x.count>=2)
+    .sort((a,b)=>b.count-a.count)
+    .slice(0,10);
+}
+
+// ---------- Main scan ----------
+// ---------- 訊號品質過濾:強訊號除了雙週期對齊,還要有「型態確認」支持,並且風險報酬比不能太差 ----------
+// 目的是讓「強訊號」少而精:單純雙週期方向一致,门槛偏寬鬆,容易把雜訊也算進去。
+// 加上至少一種型態(123法則/經典轉折/收斂型態/供需區/ABCD)同方向確認,才算真正夠格的強訊號,
+// 這是結構性的品質篩選,不是套歷史資料調出來的參數,同一套規則套在任何時間點都一樣。
+function hasConfluenceSupport(dir, p123, classic, conv, zone, abcd){
+  if(p123){
+    if(dir==='long' && p123.type==='bullish' && p123.confirmed) return true;
+    if(dir==='short' && p123.type==='bearish' && p123.confirmed) return true;
+  }
+  if(classic && classic.confirmed){
+    const bullType = classic.type==='head_shoulders_bottom' || classic.type==='triple_bottom' || classic.type==='double_bottom';
+    const bearType = classic.type==='head_shoulders_top' || classic.type==='triple_top' || classic.type==='double_top';
+    if(dir==='long' && bullType) return true;
+    if(dir==='short' && bearType) return true;
+  }
+  if(conv && conv.confirmed){
+    if(dir==='long' && conv.expectedBreak==='up') return true;
+    if(dir==='short' && conv.expectedBreak==='down') return true;
+  }
+  if(zone && zone.retested){
+    if(dir==='long' && zone.type==='demand') return true;
+    if(dir==='short' && zone.type==='supply') return true;
+  }
+  if(abcd && abcd.nearD){
+    if(dir==='long' && abcd.dir==='bull') return true;
+    if(dir==='short' && abcd.dir==='bear') return true;
+  }
+  return false;
+}
+const MIN_RR_FOR_STRONG = 1.3; // 風險報酬比低於這個門檻,即使方向判斷對,划算程度也不夠,不算強訊號
+
+// ---------- 主流幣清單:不管訊號強弱,永遠獨立顯示,方便當作大盤參考 ----------
+const MAINSTREAM_SYMBOLS = ['BTC','ETH','BNB','SOL','XRP','DOGE'];
+
+// ---------- 近似大單/鯨魚動向(不是真正鏈上鯨魚錢包追蹤,只是抓最近的異常大額成交)----------
+// 用交易所公開的「近期成交明細」,把單筆金額明顯超過中位數很多倍的成交視為「大單」,
+// 統計這些大單裡主動買方 vs 主動賣方各自的金額,概略看資金偏向。
+// 目前只支援Binance資料來源(BingX的對應端點格式與可用性不確定,先不做,避免顯示錯誤資訊)。
+// ---------- 合約未平倉量 + 資金費率(免費、不用申請帳號的「近似鯨魚訊號」)----------
+// 未平倉量突然增加,代表有新資金在建立槓桿倉位(不管方向);資金費率飆到極端值,
+// 代表某一邊擠了很多槓桿倉位,隨時可能反向擠壓。這兩個是永續合約市場公開、免費就能查到的資料,
+// 常被當作「有沒有大資金在動作」的參考指標,雖然不是鏈上鯨魚錢包等級的精準資料,但比單純看價格更貼近實際資金流向。
+async function fetchFuturesFlow(displaySymbol, market){
+  if(market!=='crypto') return { unsupported:true, reason:'目前只支援加密貨幣' };
+  try{
+    if(currentSource()==='bingx-swap'){
+      const exSym = displaySymbol+'-USDT';
+      const [oiJson, fundingJson] = await Promise.all([
+        fetchBingXJson(`https://open-api.bingx.com/openApi/swap/v2/quote/openInterest?symbol=${exSym}&timestamp=${Date.now()}`),
+        fetchBingXJson(`https://open-api.bingx.com/openApi/swap/v2/quote/premiumIndex?symbol=${exSym}&timestamp=${Date.now()}`)
+      ]);
+      const oiData = oiJson.data || oiJson;
+      const fundingData = fundingJson.data || fundingJson;
+      const openInterest = parseFloat(oiData.openInterest ?? oiData.amount ?? 0);
+      const fundingRate = parseFloat(fundingData.lastFundingRate ?? fundingData.fundingRate ?? 0);
+      if(!openInterest && !fundingRate) return null;
+      return { openInterest, fundingRate, oiChangePct:null, source:'BingX永續合約' };
+    }
+    // 不管目前選的是Binance還是BingX(現貨),都嘗試查Binance期貨市場的對應合約資料——
+    // 資料來源選擇是抓「即時行情K棒」用的,期貨資金流資料是額外補充參考,兩者概念上是分開的。
+    const symbol = displaySymbol+'USDT';
+    const [oiRes, histRes, fundingRes] = await Promise.all([
+      fetchWithTimeout(`https://fapi.binance.com/fapi/v1/openInterest?symbol=${symbol}`, 8000),
+      fetchWithTimeout(`https://fapi.binance.com/futures/data/openInterestHist?symbol=${symbol}&period=1h&limit=25`, 8000),
+      fetchWithTimeout(`https://fapi.binance.com/fapi/v1/premiumIndex?symbol=${symbol}`, 8000)
+    ]);
+    if(!oiRes.ok || !fundingRes.ok) return null; // 這個幣沒有對應的永續合約(例如太小眾的幣),屬正常情況
+    const oiJson = await oiRes.json();
+    const fundingJson = await fundingRes.json();
+    const openInterest = parseFloat(oiJson.openInterest);
+    const fundingRate = parseFloat(fundingJson.lastFundingRate);
+    let oiChangePct = null;
+    if(histRes.ok){
+      const hist = await histRes.json();
+      if(Array.isArray(hist) && hist.length>=2){
+        const first = parseFloat(hist[0].sumOpenInterest);
+        const last = parseFloat(hist[hist.length-1].sumOpenInterest);
+        if(first>0) oiChangePct = (last-first)/first*100;
+      }
+    }
+    return { openInterest, fundingRate, oiChangePct, source:'Binance USDT本位合約' };
+  }catch(e){ return null; }
+}
+
+async function fetchLargeTradesApprox(displaySymbol, market){
+  if(market!=='crypto') return { unsupported:true, reason:'目前只支援加密貨幣' };
+  if(currentSource()!=='binance') return { unsupported:true, reason:'目前只支援Binance資料來源' };
+  try{
+    const symbol = displaySymbol+'USDT';
+    const json = await fetchWithFallback(`/api/v3/aggTrades?symbol=${symbol}&limit=500`);
+    if(!Array.isArray(json) || json.length===0) return null;
+    const usdSizes = json.map(t=>parseFloat(t.q)*parseFloat(t.p));
+    const sorted = [...usdSizes].sort((a,b)=>a-b);
+    const median = sorted[Math.floor(sorted.length/2)] || 0;
+    const threshold = Math.max(median*15, 20000); // 中位數15倍,或至少2萬鏡值美金,取較大者
+    let buyCount=0, sellCount=0, buyUsd=0, sellUsd=0;
+    json.forEach((t,i)=>{
+      const usd = usdSizes[i];
+      if(usd>=threshold){
+        // isBuyerMaker(m)=true代表主動賣方成交(打進買單掛單)=賣壓;false代表主動買方成交=買壓
+        if(t.m){ sellCount++; sellUsd+=usd; } else { buyCount++; buyUsd+=usd; }
+      }
+    });
+    return { buyCount, sellCount, buyUsd, sellUsd, sampleCount: json.length, threshold };
+  }catch(e){ return null; }
+}
+
+async function runScan(){
+  const btn = document.getElementById('refreshBtn');
+  const statusText = document.getElementById('statusText');
+  const count = parseInt(document.getElementById('scanCount').value)||30;
+  const primaryInt = document.getElementById('interval').value;
+  const confirmInt = confirmInterval(primaryInt);
+  const lookahead = parseInt(document.getElementById('lookahead').value)||8;
+
+  btn.disabled = true;
+  statusText.textContent = `掃描中 (0/${count})...`;
+
+  try{
+    const symbols = await fetchTopSymbols(count);
+
+    // BTC baseline on primary interval
+    let btcDir = null;
+    try{
+      const btcCandles = await fetchKlines(toExchangeSymbol('BTCUSDT'), primaryInt);
+      const btcClass = classifyFromCandles(btcCandles);
+      btcDir = btcClass ? btcClass.dir : null;
+    }catch(e){ /* ignore */ }
+
+    const results = [];
+    const btAgg = {
+      long:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0},
+      short:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0},
+      firstHalf:{count:0,correct:0}, secondHalf:{count:0,correct:0}
+    };
+    let done=0;
+    for(const s of symbols){
+      try{
+        const [primaryCandles, confirmCandles] = await Promise.all([
+          fetchKlines(s.symbol, primaryInt, 300),
+          fetchKlines(s.symbol, confirmInt, 150)
+        ]);
+        const c1 = classifyFromCandles(primaryCandles);
+        const c2 = classifyFromCandles(confirmCandles);
+        const vol = atrPercent(primaryCandles);
+        const bt = backtestSymbol(primaryCandles, lookahead, confirmCandles);
+        const entryLevelsShort = computeEntryLevels(primaryCandles);
+        const entryLevelsLong = computeEntryLevels(confirmCandles);
+        const pattern123 = detect123Pattern(primaryCandles);
+        const classicPattern = detectClassicPattern(primaryCandles);
+        const convergencePattern = detectConvergencePattern(primaryCandles);
+        const supplyDemandZone = detectSupplyDemandZone(primaryCandles);
+        const abcdPattern = detectABCDPattern(primaryCandles);
+        const orderBlockBOS = detectOrderBlockBOS(primaryCandles);
+        const extremeMove = detectExtremeMove(primaryCandles);
+        const lastClose = parseFloat(primaryCandles[primaryCandles.length-1][4]);
+        if(c1){
+          const aligned = c2 && c2.dir===c1.dir && c1.dir!=='neutral';
+          // BTC本身就是大盤基準,不跟自己比對「是否跟大盤一致」,避免抓大盤方向跟抓BTC自己方向
+          // 因為計算時間點/週期沒完全同步而打架,出現BTC跟BTC自己「不一致」的矛盾結果
+          // (BingX現貨/永續合約的symbol格式是「BTC-USDT」帶槓線,Binance是「BTCUSDT」,兩種都要判斷到)
+          const isBtcItself = s.symbol==='BTCUSDT' || s.symbol==='BTC-USDT';
+          const withBtc = isBtcItself ? null : (btcDir && c1.dir===btcDir);
+          const liveDisplay = { ...c1 };
+          if(liveDisplay.tier==='strong' && !aligned) liveDisplay.tier = 'weak'; // 雙週期不對齊,不算強訊號
+          // 品質過濾:就算雙週期對齊,沒有型態確認支持,或風險報酬比太差,也降級不算強訊號
+          const confluence = hasConfluenceSupport(c1.dir, pattern123, classicPattern, convergencePattern, supplyDemandZone, abcdPattern);
+          const rr = entryLevelsShort && entryLevelsShort.riskRewardToTp1;
+          const rrOk = rr==null ? true : rr >= MIN_RR_FOR_STRONG;
+          if(liveDisplay.tier==='strong' && !(confluence && rrOk)) liveDisplay.tier = 'weak';
+          liveDisplay.confluence = confluence;
+          const confluenceScore = computeConfluenceScore(primaryCandles, c1.dir);
+          results.push({
+            symbol: s.display,
+            change24h: s.change24h,
+            ...liveDisplay, aligned, withBtc, isBtcItself, volPct: vol, ownBacktest: bt, lastClose,
+            entryLevels: entryLevelsShort, entryLevelsShort, entryLevelsLong,
+            pattern123, classicPattern, convergencePattern, supplyDemandZone, abcdPattern, orderBlockBOS, confluenceScore, extremeMove, market:'crypto'
+          });
+        }
+        btAgg.long.count += bt.long.count; btAgg.long.correct += bt.long.correct;
+        btAgg.long.winSum += bt.long.winSum; btAgg.long.winN += bt.long.winN;
+        btAgg.long.lossSum += bt.long.lossSum; btAgg.long.lossN += bt.long.lossN;
+        btAgg.short.count += bt.short.count; btAgg.short.correct += bt.short.correct;
+        btAgg.short.winSum += bt.short.winSum; btAgg.short.winN += bt.short.winN;
+        btAgg.short.lossSum += bt.short.lossSum; btAgg.short.lossN += bt.short.lossN;
+        btAgg.firstHalf.count += bt.firstHalf.count; btAgg.firstHalf.correct += bt.firstHalf.correct;
+        btAgg.secondHalf.count += bt.secondHalf.count; btAgg.secondHalf.correct += bt.secondHalf.correct;
+      }catch(e){ /* skip on error */ }
+      done++;
+      statusText.textContent = `掃描中 (${done}/${count})...`;
+      await new Promise(r=>setTimeout(r,60));
+    }
+
+    await saveScanSnapshot(results);
+    await evaluateAndRecordLiveSignals('crypto', results, primaryInt);
+    applyLiveAdjustment(results, 'crypto');
+    renderAll(results);
+    renderBacktest(btAgg);
+    statusText.textContent = `完成 · ${new Date().toLocaleTimeString('zh-TW')} 更新`;
+  }catch(e){
+    statusText.textContent = '掃描失敗:' + (e && e.message ? e.message : '未知錯誤');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function renderAll(results){
+  state.resultsByMarket.crypto = results;
+  // breadth
+  const bulls = results.filter(r=>r.dir==='long').length;
+  const bears = results.filter(r=>r.dir==='short').length;
+  const total = Math.max(bulls+bears,1);
+  document.getElementById('breadthBull').style.width = (bulls/total*100)+'%';
+  document.getElementById('breadthBear').style.width = (bears/total*100)+'%';
+  document.getElementById('breadthLabel').textContent = `多方 ${bulls} / 空方 ${bears}`;
+
+  // 主流幣參考:不管訊號強弱、有沒有型態確認,只要是主流幣就永遠顯示,方便當大盤參考
+  const mainstreamGrid = document.getElementById('mainstreamGrid');
+  const mainstreamList = MAINSTREAM_SYMBOLS.map(sym=>results.find(r=>r.symbol===sym)).filter(Boolean);
+  mainstreamGrid.innerHTML = mainstreamList.length ? mainstreamList.map(r=>{
+    const dirLabel = r.dir==='long' ? (r.tier==='strong'?'強多':'小多') : r.dir==='short' ? (r.tier==='strong'?'強空':'小空') : '中性';
+    const dirColorM = r.dir==='long' ? 'var(--bull)' : r.dir==='short' ? 'var(--bear)' : 'var(--text-muted)';
+    const volRatioLabel = r.volExpansion!=null ? `${r.volExpansion.toFixed(2)}倍` : '—';
+    const volRatioColor = r.volExpansion!=null && r.volExpansion>=1.8 ? 'var(--gold)' : 'var(--text-muted)';
+    return `
+    <div class="spot-card" style="cursor:pointer" onclick="showCoinDetail('${r.symbol}')">
+      <span class="sym">${r.symbol}</span>
+      <span class="tag" style="background:transparent;border:1px solid ${dirColorM};color:${dirColorM};">${dirLabel}</span>
+      <div class="row"><span>信心指數</span><b>${r.confidence}%</b></div>
+      <div class="row"><span>24h漲跌</span><b>${r.change24h>=0?'+':''}${r.change24h.toFixed(1)}%</b></div>
+      <div class="row"><span>量能倍數(近20根均量)</span><b style="color:${volRatioColor};">${volRatioLabel}</b></div>
+    </div>`;
+  }).join('') : '<div class="empty-spot">掃描後會顯示這裡</div>';
+
+  // spotlight: strong tier + aligned + withBtc, top 4 by confidence
+  // BTC本身withBtc是null(不跟自己比對),但只要強訊號+雙週期對齊就該有機會入選重點榜
+  const spotlight = results.filter(r=>r.tier==='strong' && r.aligned && (r.withBtc || r.isBtcItself))
+    .sort((a,b)=>b.confidence-a.confidence).slice(0,4);
+  const spotGrid = document.getElementById('spotlightGrid');
+  spotGrid.innerHTML = spotlight.length ? spotlight.map(r=>{
+    const bbLabel = r.bbPercentB>=1 ? '站上布林上軌' : r.bbPercentB<=0 ? '跌破布林下軌' : `區間內 ${(r.bbPercentB*100).toFixed(0)}%位置`;
+    const buyLabel = r.buyRatio!==null ? (r.buyRatio*100).toFixed(0)+'%' : '無資料(BingX不支援)';
+    return `
+    <div class="spot-card" style="cursor:pointer" onclick="showCoinDetail('${r.symbol}')">
+      <span class="sym">${r.symbol}</span>
+      <span class="tag ${r.dir==='long'?'tag-long':'tag-short'}">${r.dir==='long'?'強多':'強空'}</span>
+      <div class="row"><span>信心指數</span><b>${r.confidence}%</b></div>
+      <div class="row"><span>雙週期對齊</span><b>是</b></div>
+      <div class="row"><span>跟大盤方向</span><b>一致</b></div>
+      <div class="row"><span>布林帶位置</span><b>${bbLabel}</b></div>
+      <div class="row"><span>主動買盤比例</span><b>${buyLabel}</b></div>
+      <div class="row"><span>24h漲跌</span><b>${r.change24h>=0?'+':''}${r.change24h.toFixed(1)}%</b></div>
+    </div>`;
+  }).join('') : '<div class="empty-spot">目前沒有同時符合「強訊號 + 雙週期一致 + 跟大盤同向」的幣種,可以放寬條件看下方列表</div>';
+
+  // big/small trend tables
+  const big = results.filter(r=>r.tier==='strong').sort((a,b)=>b.confidence-a.confidence);
+  const small = results.filter(r=>r.tier==='weak').sort((a,b)=>b.confidence-a.confidence);
+  document.getElementById('bigCount').textContent = big.length+' 檔';
+  document.getElementById('smallCount').textContent = small.length+' 檔';
+  document.getElementById('bigTrendRows').innerHTML = renderRows(big) || '<div class="empty">目前沒有強訊號幣種</div>';
+  document.getElementById('smallTrendRows').innerHTML = renderRows(small) || '<div class="empty">目前沒有初步訊號幣種</div>';
+
+  // vol radar
+  const volTop = [...results].sort((a,b)=>b.volPct-a.volPct).slice(0,10);
+  state.lastVolTop = volTop;
+  renderMacroEvents();
+  document.getElementById('volRadarRows').innerHTML = volTop.map(r=>
+    `<div class="mini-row"><span class="sym">${r.symbol}</span><span class="val">振幅 ${r.volPct.toFixed(2)}%</span></div>`
+  ).join('') || '<div class="empty">無資料</div>';
+
+  // repeat board
+  const repeats = computeRepeatBoard();
+  document.getElementById('historyCount').textContent = `已累積 ${state.history.length} 次掃描`;
+  document.getElementById('historyRows').innerHTML = repeats.length ? repeats.map(r=>
+    `<div class="mini-row"><span class="sym">${r.sym} <span style="color:${r.dominant==='long'?'var(--bull)':'var(--bear)'};font-size:11px;">${r.dominant==='long'?'偏多':'偏空'}</span></span><span class="val">出現 ${r.count} 次</span></div>`
+  ).join('') : '<div class="empty">再多掃描幾次,重複出現的幣種會列在這裡</div>';
+
+  renderPatternBoard();
+}
+
+// ---------- AI形態彙整:把已經算好的123法則/經典轉折/收斂型態/供需區/ABCD/OrderBlock
+// 從crypto、gold、stock三個市場的結果裡收集起來,整理成統一格式方便列表顯示 ----------
+function collectPatternHits(){
+  const all = [
+    ...state.resultsByMarket.crypto.map(r=>({...r, marketLabel:'加密貨幣'})),
+    ...state.resultsByMarket.gold.map(r=>({...r, marketLabel:'黃金'})),
+    ...state.resultsByMarket.stock.map(r=>({...r, marketLabel:'美股'}))
+  ];
+  const hits = [];
+  const fmt = v => (v==null || isNaN(v)) ? '—' : v.toFixed(v<10?4:2);
+
+  all.forEach(r=>{
+    if(r.pattern123){
+      const p = r.pattern123;
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName:'123法則', dir: p.type==='bullish'?'bull':'bear',
+        confirmed: !!p.confirmed,
+        detail: p.confirmed ? `已突破觸發價 ${fmt(p.triggerPrice)}` : `尚未突破觸發價 ${fmt(p.triggerPrice)}(等待確認)`
+      });
+    }
+    if(r.classicPattern){
+      const c = r.classicPattern;
+      const nameMap = {
+        head_shoulders_bottom:'頭肩底', triple_bottom:'三重底', double_bottom:'雙底',
+        head_shoulders_top:'頭肩頂', triple_top:'三重頂', double_top:'雙頂'
+      };
+      const bullSet = ['head_shoulders_bottom','triple_bottom','double_bottom'];
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName: nameMap[c.type] || c.type,
+        dir: bullSet.includes(c.type) ? 'bull' : 'bear',
+        confirmed: !!c.confirmed,
+        detail: c.confirmed ? `已突破頸線 ${fmt(c.neckline)}` : `尚未突破頸線 ${fmt(c.neckline)}(等待確認)`
+      });
+    }
+    if(r.convergencePattern){
+      const cv = r.convergencePattern;
+      const roleLabel = cv.role==='continuation' ? '中繼' : cv.role==='reversal' ? '反轉' : '型態未定';
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName: `${cv.name}(${roleLabel})`,
+        dir: cv.expectedBreak==='up' ? 'bull' : 'bear',
+        confirmed: !!cv.confirmed,
+        detail: cv.confirmed ? `已突破 ${fmt(cv.triggerPrice)},目標參考 ${fmt(cv.targetPrice)}` : `尚未突破觸發價 ${fmt(cv.triggerPrice)}(等待確認)`
+      });
+    }
+    if(r.supplyDemandZone){
+      const z = r.supplyDemandZone;
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName: z.type==='demand' ? '需求區(潛在買點)' : '供給區(潛在賣點)',
+        dir: z.type==='demand' ? 'bull' : 'bear',
+        confirmed: !!z.retested,
+        detail: `區間 ${fmt(z.zoneLow)} ~ ${fmt(z.zoneHigh)},${z.retested ? '目前價格已回測到此區' : `距離區間約${Math.abs(z.distancePct).toFixed(1)}%(尚未回測)`}`
+      });
+    }
+    if(r.abcdPattern){
+      const a = r.abcdPattern;
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName:'ABCD諧波',
+        dir: a.dir==='bull' ? 'bull' : 'bear',
+        confirmed: !!a.nearD,
+        detail: `D點參考價 ${fmt(a.dPrice)},BC回撤${(a.bcRetrace*100).toFixed(0)}%/CD延伸${(a.cdExtension*100).toFixed(0)}%,${a.nearD ? '目前價格已接近D點' : '尚未到達D點(等待確認)'}`
+      });
+    }
+    if(r.orderBlockBOS){
+      const ob = r.orderBlockBOS;
+      hits.push({
+        symbol:r.symbol, market:r.market, marketLabel:r.marketLabel,
+        patternName:'Order Block + BOS',
+        dir: ob.bosType==='bull' ? 'bull' : 'bear',
+        confirmed: !!ob.retested,
+        detail: `訂單塊區間 ${fmt(ob.obLow)} ~ ${fmt(ob.obHigh)},${ob.retested ? '目前價格已回測到此區' : `距離區間約${Math.abs(ob.distancePct).toFixed(1)}%(尚未回測)`}`
+      });
+    }
+  });
+  return hits;
+}
+
+function renderPatternBoard(){
+  const rowsEl = document.getElementById('patternRows');
+  if(!rowsEl) return; // 頁面還沒渲染出這個分頁時不做事
+
+  const marketFilter = document.getElementById('pattern-marketFilter')?.value || 'all';
+  const dirFilter = document.getElementById('pattern-dirFilter')?.value || 'all';
+  const confirmFilter = document.getElementById('pattern-confirmFilter')?.value ?? '1';
+
+  let hits = collectPatternHits();
+  if(marketFilter!=='all') hits = hits.filter(h=>h.market===marketFilter);
+  if(dirFilter!=='all') hits = hits.filter(h=>h.dir===dirFilter);
+  if(confirmFilter==='1') hits = hits.filter(h=>h.confirmed);
+  hits.sort((a,b)=> (b.confirmed - a.confirmed) || a.symbol.localeCompare(b.symbol));
+
+  const totalScanned = state.resultsByMarket.crypto.length + state.resultsByMarket.gold.length + state.resultsByMarket.stock.length;
+  const statusEl = document.getElementById('pattern-statusText');
+  if(statusEl) statusEl.textContent = totalScanned>0 ? `已彙整 ${totalScanned} 檔掃描結果` : '尚無資料,請先到其他分頁掃描';
+
+  document.getElementById('pattern-count').textContent = hits.length+' 筆';
+  rowsEl.innerHTML = hits.length ? hits.map(h=>{
+    const dirColor = h.dir==='bull' ? 'var(--bull)' : 'var(--bear)';
+    const dirLabel = h.dir==='bull' ? '偏多' : '偏空';
+    const confirmBadge = h.confirmed
+      ? `<span class="align-tag align-yes">已確認</span>`
+      : `<span class="align-tag">未確認</span>`;
+    return `<div class="row" style="cursor:pointer" onclick="showCoinDetail('${h.symbol}')">
+      <div class="row-top">
+        <span class="sym">${h.symbol}</span>
+        <span class="dir-tag" style="background:transparent;border:1px solid ${dirColor};color:${dirColor};">${h.patternName} · ${dirLabel}</span>
+        <span class="align-tag">${h.marketLabel}</span>
+      </div>
+      <div class="row-bottom">
+        ${confirmBadge}
+        <span class="align-tag">${h.detail}</span>
+      </div>
+    </div>`;
+  }).join('') : (totalScanned>0
+    ? '<div class="empty">目前沒有符合篩選條件的形態,可以放寬篩選(例如把「只顯示已突破確認」改成「否」)</div>'
+    : '<div class="empty">請先到「加密貨幣」「黃金」或「美股」分頁按「立即掃描」,再回來這裡看彙整結果</div>');
+}
+
+function computeExpectancy(bucket){
+  if(bucket.count===0) return null;
+  const winRate = bucket.winN/bucket.count;
+  const lossRate = bucket.lossN/bucket.count;
+  const avgWin = bucket.winN>0 ? bucket.winSum/bucket.winN : 0;
+  const avgLoss = bucket.lossN>0 ? bucket.lossSum/bucket.lossN : 0;
+  return { expectancy: winRate*avgWin - lossRate*avgLoss, avgWin, avgLoss };
+}
+
+function renderBacktest(agg){
+  const totalCount = agg.long.count + agg.short.count;
+  const totalCorrect = agg.long.correct + agg.short.correct;
+  const overall = totalCount>0 ? (totalCorrect/totalCount*100) : null;
+  const longRate = agg.long.count>0 ? (agg.long.correct/agg.long.count*100) : null;
+  const shortRate = agg.short.count>0 ? (agg.short.correct/agg.short.count*100) : null;
+  const firstRate = agg.firstHalf.count>0 ? (agg.firstHalf.correct/agg.firstHalf.count*100) : null;
+  const secondRate = agg.secondHalf.count>0 ? (agg.secondHalf.correct/agg.secondHalf.count*100) : null;
+  const longExp = computeExpectancy(agg.long);
+  const shortExp = computeExpectancy(agg.short);
+
+  document.getElementById('btOverall').textContent = overall!==null ? overall.toFixed(1)+'%' : '樣本不足';
+  document.getElementById('btLong').textContent = longRate!==null ? longRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById('btShort').textContent = shortRate!==null ? shortRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById('btCount').textContent = totalCount+' 次訊號';
+  document.getElementById('btSample').textContent = `多 ${agg.long.count} 次 · 空 ${agg.short.count} 次`;
+  document.getElementById('btFirstHalf').textContent = firstRate!==null ? firstRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById('btSecondHalf').textContent = secondRate!==null ? secondRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById('btLongExp').textContent = longExp ? (longExp.expectancy>=0?'+':'')+longExp.expectancy.toFixed(2)+'%' : '樣本不足';
+  document.getElementById('btShortExp').textContent = shortExp ? (shortExp.expectancy>=0?'+':'')+shortExp.expectancy.toFixed(2)+'%' : '樣本不足';
+
+  const stabilityEl = document.getElementById('btStability');
+  let parts = [];
+  if(firstRate!==null && secondRate!==null){
+    const gap = Math.abs(firstRate-secondRate);
+    if(gap<=10) parts.push(`前後兩段勝率差距 ${gap.toFixed(1)} 個百分點,相對穩定。`);
+    else parts.push(`前後兩段勝率差距達 ${gap.toFixed(1)} 個百分點,落差不小,代表這套邏輯可能只在某段特定行情表現好,數字可信度要打折扣。`);
+  }else{
+    parts.push('樣本數不足,無法評估前後段穩定性。');
+  }
+  if(longExp && shortExp){
+    if(longExp.expectancy>0 && shortExp.expectancy<=0) parts.push('目前做多訊號期望值為正、做空訊號期望值為負或接近零——就算做空的「猜對方向」比例不算太差,平均每次賺賠算下來還是不划算,做空訊號目前參考價值有限。');
+    else if(longExp.expectancy>0 && shortExp.expectancy>0) parts.push('目前多空期望值都是正值,但仍要留意樣本數與前後段穩定性再判斷。');
+    else parts.push('目前多空期望值都偏弱,這套邏輯在目前市場環境下整體優勢不明顯。');
+  }
+  parts.push('期望值是「平均每次訊號的報酬率」,把賺賠幅度也算進去,比單看勝率更貼近實際會不會賺錢——但一樣沒扣手續費、滑價與資金費率,樣本也有限,僅供參考,不是投資建議。');
+  stabilityEl.textContent = parts.join(' ');
+  trackPerformance('crypto', overall, longRate, shortRate, totalCount);
+}
+
+function majorTrendBadge(r){
+  const label = r.majorTrend==='up' ? '大趨勢:上升' : r.majorTrend==='down' ? '大趨勢:下降' : '大趨勢:盤整';
+  const cls = r.majorTrend==='up' ? 'major-up' : r.majorTrend==='down' ? 'major-down' : 'major-range';
+  return `<span class="major-tag ${cls}">${label}</span>`;
+}
+
+function renderRows(list){
+  return list.map(r=>{
+    const tagClass = r.dir==='long' ? (r.tier==='strong'?'dir-strong-long':'dir-weak-long') : (r.tier==='strong'?'dir-strong-short':'dir-weak-short');
+    const tagLabel = r.dir==='long' ? (r.tier==='strong'?'強多':'小多') : (r.tier==='strong'?'強空':'小空');
+    const chgClass = r.change24h>=0 ? 'up':'down';
+    const alignLabel = r.aligned ? `<span class="align-tag align-yes">雙週期一致</span>` : `<span class="align-tag">週期分歧</span>`;
+    const volBadge = (r.volExpansion!=null && r.volExpansion>=1.8) ? `<span class="align-tag align-yes">量能放大${r.volExpansion.toFixed(1)}倍</span>` : '';
+    const extremeBadge = r.extremeMove ? `<span class="align-tag" style="border-color:${r.extremeMove.moveType==='pump'?'var(--bull)':'var(--bear)'};color:${r.extremeMove.moveType==='pump'?'var(--bull)':'var(--bear)'};">${r.extremeMove.moveType==='pump'?'暴漲':'暴跌'}${r.extremeMove.movePct.toFixed(1)}%</span>` : '';
+    return `<div class="row" style="cursor:pointer" onclick="showCoinDetail('${r.symbol}')">
+      <div class="row-top">
+        <span class="sym">${r.symbol}</span>
+        <span class="dir-tag ${tagClass}">${tagLabel}</span>
+        <span class="chg ${chgClass}">${r.change24h>=0?'+':''}${r.change24h.toFixed(1)}%</span>
+        <span class="conf">${r.confidence}%</span>
+      </div>
+      <div class="row-bottom">
+        ${alignLabel}
+        ${majorTrendBadge(r)}
+        ${volBadge}
+        ${extremeBadge}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('refreshBtn').addEventListener('click', runScan);
+document.getElementById('autoRefresh').addEventListener('change', (e)=>{
+  if(state.timer) clearInterval(state.timer);
+  const ms = parseInt(e.target.value);
+  if(ms>0) state.timer = setInterval(runScan, ms);
+});
+
+// ---------- 分頁切換 ----------
+function switchMarket(market){
+  document.querySelectorAll('.market-tabs button').forEach(b=>b.classList.toggle('active', b.dataset.market===market));
+  document.querySelectorAll('.market-view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+market).classList.add('active');
+}
+
+// ---------- 通用回測彙總與渲染(供黃金/美股共用) ----------
+function renderGenericBacktest(prefix, agg){
+  const totalCount = agg.long.count + agg.short.count;
+  const totalCorrect = agg.long.correct + agg.short.correct;
+  const overall = totalCount>0 ? (totalCorrect/totalCount*100) : null;
+  const longRate = agg.long.count>0 ? (agg.long.correct/agg.long.count*100) : null;
+  const shortRate = agg.short.count>0 ? (agg.short.correct/agg.short.count*100) : null;
+  document.getElementById(prefix+'-btOverall').textContent = overall!==null ? overall.toFixed(1)+'%' : '樣本不足';
+  document.getElementById(prefix+'-btLong').textContent = longRate!==null ? longRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById(prefix+'-btShort').textContent = shortRate!==null ? shortRate.toFixed(1)+'%' : '樣本不足';
+  document.getElementById(prefix+'-btCount').textContent = totalCount+' 次訊號';
+  document.getElementById(prefix+'-btSample').textContent = `多 ${agg.long.count} 次 · 空 ${agg.short.count} 次`;
+  const longExp = computeExpectancy(agg.long), shortExp = computeExpectancy(agg.short);
+  let msg = '樣本數少的情況下,數字僅供參考,不是投資建議,沒有計入手續費與滑價。';
+  if(longExp && shortExp){
+    msg = `做多期望值 ${longExp.expectancy>=0?'+':''}${longExp.expectancy.toFixed(2)}% / 次,做空期望值 ${shortExp.expectancy>=0?'+':''}${shortExp.expectancy.toFixed(2)}% / 次。` + msg;
+  }
+  document.getElementById(prefix+'-btStability').textContent = msg;
+  trackPerformance(prefix, overall, longRate, shortRate, totalCount);
+}
+
+function renderSimpleList(containerId, results){
+  document.getElementById(containerId).innerHTML = results.length ? results.map(r=>{
+    const tagClass = r.dir==='long' ? (r.tier==='strong'?'dir-strong-long':'dir-weak-long') : r.dir==='short' ? (r.tier==='strong'?'dir-strong-short':'dir-weak-short') : '';
+    const tagLabel = r.dir==='long' ? (r.tier==='strong'?'強多':'小多') : r.dir==='short' ? (r.tier==='strong'?'強空':'小空') : '中性';
+    return `<div class="simple-list-row" onclick="showCoinDetail('${r.symbol}')">
+      <span class="sym">${r.symbol}</span>
+      <span class="dir-tag ${tagClass}">${tagLabel}</span>
+      <span class="conf">信心 ${r.confidence}%</span>
+    </div>`;
+  }).join('') : '<div class="empty">尚無資料</div>';
+}
+
+// ---------- 黃金(用幣安PAXG/XAUT代幣模擬黃金現貨) ----------
+async function runGoldScan(){
+  const btn = document.getElementById('gold-refreshBtn');
+  const statusText = document.getElementById('gold-statusText');
+  const primaryInt = document.getElementById('gold-interval').value;
+  const confirmInt = confirmInterval(primaryInt);
+  const lookahead = parseInt(document.getElementById('gold-lookahead').value)||8;
+  const apikey = document.getElementById('gold-apikey').value.trim();
+  const symbols = [
+    { symbol:'PAXGUSDT', display:'PAXG(黃金代幣)', src:'binance' },
+    { symbol:'XAUTUSDT', display:'XAUT(黃金代幣)', src:'binance' }
+  ];
+  if(apikey) symbols.push({ symbol:'XAU/USD', display:'黃金現貨(XAU/USD)', src:'twelvedata' });
+
+  btn.disabled = true;
+  statusText.textContent = '掃描中...';
+  try{
+    const results = [];
+    const btAgg = { long:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0}, short:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0} };
+    for(let i=0;i<symbols.length;i++){
+      const s = symbols[i];
+      statusText.textContent = `掃描中 (${i+1}/${symbols.length}) ${s.display}...`;
+      try{
+        let primaryCandles, confirmCandles;
+        if(s.src==='twelvedata'){
+          primaryCandles = await fetchKlinesTwelveData(s.symbol, primaryInt, apikey, 300);
+          await new Promise(r=>setTimeout(r, 8000)); // 尊重Twelve Data免費額度每分鐘8次限制
+          confirmCandles = await fetchKlinesTwelveData(s.symbol, confirmInt, apikey, 150);
+          await new Promise(r=>setTimeout(r, 8000));
+        }else{
+          primaryCandles = await fetchKlinesBinance(s.symbol, primaryInt, 300);
+          confirmCandles = await fetchKlinesBinance(s.symbol, confirmInt, 150);
+        }
+        const c1 = classifyFromCandles(primaryCandles);
+        const c2 = classifyFromCandles(confirmCandles);
+        const vol = atrPercent(primaryCandles);
+        const change24h = ((parseFloat(primaryCandles[primaryCandles.length-1][4]) - parseFloat(primaryCandles[primaryCandles.length-2][4])) / parseFloat(primaryCandles[primaryCandles.length-2][4]))*100;
+        const bt = backtestSymbol(primaryCandles, lookahead, confirmCandles);
+        if(c1){
+          const aligned = c2 && c2.dir===c1.dir && c1.dir!=='neutral';
+          const liveDisplay = { ...c1 };
+          if(liveDisplay.tier==='strong' && !aligned) liveDisplay.tier = 'weak';
+          const p123g = detect123Pattern(primaryCandles), classicG = detectClassicPattern(primaryCandles),
+                convG = detectConvergencePattern(primaryCandles), zoneG = detectSupplyDemandZone(primaryCandles), abcdG = detectABCDPattern(primaryCandles);
+          const obG = detectOrderBlockBOS(primaryCandles);
+          const extremeMoveG = detectExtremeMove(primaryCandles);
+          const entryG = computeEntryLevels(primaryCandles);
+          const confluenceG = hasConfluenceSupport(c1.dir, p123g, classicG, convG, zoneG, abcdG);
+          const rrOkG = (!entryG || entryG.riskRewardToTp1==null) ? true : entryG.riskRewardToTp1 >= MIN_RR_FOR_STRONG;
+          if(liveDisplay.tier==='strong' && !(confluenceG && rrOkG)) liveDisplay.tier = 'weak';
+          liveDisplay.confluence = confluenceG;
+          const confluenceScoreG = computeConfluenceScore(primaryCandles, c1.dir);
+          results.push({ symbol: s.display, change24h, ...liveDisplay, aligned, withBtc:false, volPct: vol, ownBacktest: bt, lastClose: parseFloat(primaryCandles[primaryCandles.length-1][4]),
+            entryLevels: entryG, entryLevelsShort: entryG, entryLevelsLong: computeEntryLevels(confirmCandles),
+            pattern123: p123g, classicPattern: classicG, convergencePattern: convG, supplyDemandZone: zoneG, abcdPattern: abcdG, orderBlockBOS: obG, confluenceScore: confluenceScoreG, extremeMove: extremeMoveG, market:'gold' });
+        }
+        btAgg.long.count+=bt.long.count; btAgg.long.correct+=bt.long.correct; btAgg.long.winSum+=bt.long.winSum; btAgg.long.winN+=bt.long.winN; btAgg.long.lossSum+=bt.long.lossSum; btAgg.long.lossN+=bt.long.lossN;
+        btAgg.short.count+=bt.short.count; btAgg.short.correct+=bt.short.correct; btAgg.short.winSum+=bt.short.winSum; btAgg.short.winN+=bt.short.winN; btAgg.short.lossSum+=bt.short.lossSum; btAgg.short.lossN+=bt.short.lossN;
+      }catch(errOne){
+        // 單一標的失敗(例如金鑰錯誤、額度用完)不中斷整個掃描,跳過這個標的繼續下一個
+        console.warn(s.display, errOne);
+      }
+    }
+    document.getElementById('gold-listCount').textContent = `追蹤 ${results.map(r=>r.symbol).join('、') || 'PAXG、XAUT'}`;
+    await evaluateAndRecordLiveSignals('gold', results, primaryInt);
+    applyLiveAdjustment(results, 'gold');
+    state.resultsByMarket.gold = results;
+    renderSimpleList('gold-listRows', results);
+    renderGenericBacktest('gold', btAgg);
+    renderPatternBoard();
+    statusText.textContent = `完成 · ${new Date().toLocaleTimeString('zh-TW')} 更新`;
+  }catch(e){
+    statusText.textContent = '掃描失敗:' + (e && e.message ? e.message : '未知錯誤');
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById('gold-refreshBtn').addEventListener('click', runGoldScan);
+
+// ---------- 美股(Twelve Data) ----------
+function twelveDataInterval(int){
+  return { '15m':'15min', '1h':'1h', '4h':'4h', '1d':'1day' }[int] || '1h';
+}
+async function fetchKlinesTwelveData(symbol, interval, apikey, outputsize=300){
+  const url = `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(symbol)}&interval=${twelveDataInterval(interval)}&outputsize=${outputsize}&apikey=${apikey}`;
+  const res = await fetch(url);
+  const json = await res.json();
+  if(json.status==='error' || !json.values) throw new Error(json.message || 'Twelve Data 回傳錯誤(檢查金鑰或代碼是否正確)');
+  // Twelve Data回傳是新到舊排序,轉成舊到新,並轉成內部通用格式 [time,open,high,low,close,volume]
+  const candles = json.values.slice().reverse().map(v=>[v.datetime, v.open, v.high, v.low, v.close, v.volume||0]);
+  return dropUnclosedCandle(candles);
+}
+async function runStockScan(){
+  const btn = document.getElementById('stock-refreshBtn');
+  const statusText = document.getElementById('stock-statusText');
+  const apikey = document.getElementById('stock-apikey').value.trim();
+  const watchlist = document.getElementById('stock-watchlist').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const primaryInt = document.getElementById('stock-interval').value;
+  if(!apikey){ statusText.textContent = '請先輸入Twelve Data API金鑰'; return; }
+  if(!watchlist.length){ statusText.textContent = '請輸入至少一個代碼'; return; }
+
+  btn.disabled = true;
+  const results = [];
+  const btAgg = { long:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0}, short:{count:0,correct:0,winSum:0,winN:0,lossSum:0,lossN:0} };
+  try{
+    for(let i=0;i<watchlist.length;i++){
+      const sym = watchlist[i];
+      statusText.textContent = `掃描中 (${i+1}/${watchlist.length}) ${sym} ——免費額度限制,請稍候...`;
+      try{
+        const candles = await fetchKlinesTwelveData(sym, primaryInt, apikey, 300);
+        await new Promise(r=>setTimeout(r, 8000));
+        const confirmCandles = await fetchKlinesTwelveData(sym, confirmInterval(primaryInt), apikey, 150);
+        const c1 = classifyFromCandles(candles);
+        const c2 = classifyFromCandles(confirmCandles);
+        const vol = atrPercent(candles);
+        const bt = backtestSymbol(candles, 8, confirmCandles);
+        const n = candles.length;
+        const change24h = n>=2 ? ((parseFloat(candles[n-1][4])-parseFloat(candles[n-2][4]))/parseFloat(candles[n-2][4]))*100 : 0;
+        if(c1){
+          const aligned = c2 && c2.dir===c1.dir && c1.dir!=='neutral';
+          const liveDisplay = { ...c1 };
+          if(liveDisplay.tier==='strong' && !aligned) liveDisplay.tier = 'weak';
+          const p123s = detect123Pattern(candles), classicS = detectClassicPattern(candles),
+                convS = detectConvergencePattern(candles), zoneS = detectSupplyDemandZone(candles), abcdS = detectABCDPattern(candles);
+          const obS = detectOrderBlockBOS(candles);
+          const extremeMoveS = detectExtremeMove(candles);
+          const entryS = computeEntryLevels(candles);
+          const confluenceS = hasConfluenceSupport(c1.dir, p123s, classicS, convS, zoneS, abcdS);
+          const rrOkS = (!entryS || entryS.riskRewardToTp1==null) ? true : entryS.riskRewardToTp1 >= MIN_RR_FOR_STRONG;
+          if(liveDisplay.tier==='strong' && !(confluenceS && rrOkS)) liveDisplay.tier = 'weak';
+          liveDisplay.confluence = confluenceS;
+          const confluenceScoreS = computeConfluenceScore(candles, c1.dir);
+          results.push({ symbol: sym, change24h, ...liveDisplay, aligned, withBtc:false, volPct: vol, ownBacktest: bt, lastClose: parseFloat(candles[n-1][4]),
+            entryLevels: entryS, entryLevelsShort: entryS, entryLevelsLong: computeEntryLevels(confirmCandles),
+            pattern123: p123s, classicPattern: classicS, convergencePattern: convS, supplyDemandZone: zoneS, abcdPattern: abcdS, orderBlockBOS: obS, confluenceScore: confluenceScoreS, extremeMove: extremeMoveS, market:'stock' });
+        }
+        btAgg.long.count+=bt.long.count; btAgg.long.correct+=bt.long.correct; btAgg.long.winSum+=bt.long.winSum; btAgg.long.winN+=bt.long.winN; btAgg.long.lossSum+=bt.long.lossSum; btAgg.long.lossN+=bt.long.lossN;
+        btAgg.short.count+=bt.short.count; btAgg.short.correct+=bt.short.correct; btAgg.short.winSum+=bt.short.winSum; btAgg.short.winN+=bt.short.winN; btAgg.short.lossSum+=bt.short.lossSum; btAgg.short.lossN+=bt.short.lossN;
+      }catch(err){
+        console.warn(sym, err);
+      }
+      if(i < watchlist.length-1) await new Promise(r=>setTimeout(r, 8000)); // 尊重免費額度每分鐘8次限制
+    }
+    state.resultsByMarket.stock = results;
+    await evaluateAndRecordLiveSignals('stock', results, primaryInt);
+    applyLiveAdjustment(results, 'stock');
+    renderSimpleList('stock-listRows', results);
+    document.getElementById('stock-listCount').textContent = results.length+' 檔';
+    renderGenericBacktest('stock', btAgg);
+    renderPatternBoard();
+    statusText.textContent = `完成 · ${new Date().toLocaleTimeString('zh-TW')} 更新`;
+  }catch(e){
+    statusText.textContent = '掃描失敗:' + (e && e.message ? e.message : '未知錯誤');
+  }finally{
+    btn.disabled = false;
+  }
+}
+document.getElementById('stock-refreshBtn').addEventListener('click', runStockScan);
+
+async function startApp(){
+  await loadHistory();
+  await loadMacroEvents();
+  await loadPerfHistory();
+  await loadLiveTrack();
+  renderMacroEvents();
+  renderPerfChart('crypto'); renderPerfChart('gold'); renderPerfChart('stock');
+  document.getElementById('autoRefresh').dispatchEvent(new Event('change'));
+  runScan();
+}
+
+// ---------- 幣種詳細分析視窗 ----------
+function showCoinDetail(symbol){
+  const r = [...state.resultsByMarket.crypto, ...state.resultsByMarket.gold, ...state.resultsByMarket.stock].find(x=>x.symbol===symbol);
+  if(!r) return;
+
+  const dirLabel = r.dir==='long' ? '多方' : r.dir==='short' ? '空方' : '中性';
+  const tierLabel = r.tier==='strong' ? '強訊號' : r.tier==='weak' ? '小訊號' : '無訊號';
+  const confluenceNote = r.tier==='strong'
+    ? `<div class="note" style="margin-top:2px;">這個「強訊號」除了雙週期方向一致,還有型態確認同方向支持,且風險報酬比不算太差,才被列為強訊號(比單純雙週期對齊的門檻更嚴格)。</div>`
+    : '';
+
+  // 即時樣本自動微調說明:完全透明顯示目前累積了多少筆、調整了多少分,不是黑箱
+  let liveAdjHtml = '';
+  const la = r.liveAdj;
+  if(la){
+    if(la.count < LIVE_TIER_STEP){
+      liveAdjHtml = `<div class="note" style="margin-top:2px;">即時樣本自動微調:${r.market} · ${dirLabel}方向目前累積 ${la.count} 筆,未達100筆門檻,信心分數暫不受此影響。</div>`;
+    }else{
+      const adjColor = la.adj>0 ? 'var(--bull)' : la.adj<0 ? 'var(--bear)' : 'var(--text-muted)';
+      const adjSign = la.adj>0 ? '+' : '';
+      liveAdjHtml = `<div class="note" style="margin-top:2px;">即時樣本自動微調:${r.market} · ${dirLabel}方向已累積 <b>${la.count}</b> 筆(每滿100筆放寬一階,最多疊加4階),即時勝率 <b>${la.winRate.toFixed(1)}%</b>,已對信心分數套用 <b style="color:${adjColor};">${adjSign}${la.adj}</b> 分微調。</div>`;
+    }
+  }
+  const dirColor = r.dir==='long' ? 'var(--bull)' : r.dir==='short' ? 'var(--bear)' : 'var(--text-muted)';
+  const bbLabel = r.bbPercentB>=1 ? '站上布林上軌(突破)' : r.bbPercentB<=0 ? '跌破布林下軌(突破)' : `區間內約 ${(r.bbPercentB*100).toFixed(0)}% 位置`;
+  const buyLabel = r.buyRatio!==null ? `${(r.buyRatio*100).toFixed(1)}% 是主動買方成交` : '無資料(此資料來源不支援)';
+  const trendLabel = r.trend>=20 ? `${r.trend.toFixed(0)}(有方向性)` : `${r.trend.toFixed(0)}(偏盤整)`;
+  const majorLabel = r.majorTrend==='up' ? '上升趨勢' : r.majorTrend==='down' ? '下降趨勢' : '盤整/轉折中';
+
+  // 決定價格的顯示位數:太小的價格(例如美股個位數或迷因幣)用更多小數位
+  function fmtPrice(p){
+    if(p==null) return '—';
+    if(p>=1000) return p.toFixed(1);
+    if(p>=1) return p.toFixed(3);
+    return p.toFixed(6);
+  }
+
+  // 進場價位區塊:短期(主週期,較快但雜訊較多)跟長期(確認週期,較穩但反應較慢)分開顯示,
+  // 因為兩個時間級別的擺動高低點不一樣,算出來的進場區、停損、目標價本來就會不同,沒有對錯,只是「你想抓哪個節奏」。
+  function renderEntryBlock(el, timeframeLabel){
+    if(!el || !el.oteZone){
+      return `<div class="note">${timeframeLabel}目前市場結構不夠清楚(高低點排列混雜),暫時沒有足夠明確的參考進場區——這種情況本身也是一種訊息,代表可能處於轉折或盤整。</div>`;
+    }
+    const structLabel = el.structure==='up' ? '上升結構(更高高點+更高低點)' : '下降結構(更低高點+更低低點)';
+    const sideLabel = el.side==='long' ? '參考做多' : '參考做空';
+    const sideColor = el.side==='long' ? 'var(--bull)' : 'var(--bear)';
+    const rrLabel = el.riskRewardToTp1!=null ? `1 : ${el.riskRewardToTp1.toFixed(2)}` : '—';
+    const tpRows = el.takeProfits.map(tp=>`<div class="metric-row"><span>${tp.label}</span><b>${fmtPrice(tp.price)}</b></div>`).join('');
+    return `
+      <div class="metric-row"><span>市場結構</span><b>${structLabel}</b></div>
+      <div class="metric-row"><span>方向</span><b style="color:${sideColor};">${sideLabel}</b></div>
+      <div class="metric-row"><span>參考進場區(OTE 61.8~79%回撤)</span><b>${fmtPrice(el.oteZone.low)} ~ ${fmtPrice(el.oteZone.high)}</b></div>
+      <div class="metric-row"><span>參考進場價(區間中點)</span><b>${fmtPrice(el.entryPrice)}</b></div>
+      <div class="metric-row"><span>參考結構停損</span><b>${fmtPrice(el.stopLoss)}</b></div>
+      ${tpRows}
+      <div class="metric-row"><span>風險報酬比(到目標一)</span><b>${rrLabel}</b></div>`;
+  }
+  const entryShortHtml = renderEntryBlock(r.entryLevelsShort || r.entryLevels, '短期(主週期)');
+  const entryLongHtml = renderEntryBlock(r.entryLevelsLong, '長期(確認週期)');
+  const entryHtml = `
+    <div style="font-size:12px;color:var(--gold);font-weight:600;margin-bottom:4px;">短期 · 主週期擺動結構</div>
+    ${entryShortHtml}
+    <div style="font-size:12px;color:var(--gold);font-weight:600;margin:14px 0 4px;">長期 · 確認週期擺動結構</div>
+    ${entryLongHtml}
+    <div class="note">這一整組價位都是根據對應時間級別最近一段擺動高低點,用斐波那契回撤與等幅推動算出來的參考數字,不是報明牌、不是保證會走到這裡。短期跟長期算出來的進場區、停損、目標價常常不一樣,這是正常的——短期節奏快、進出頻繁但雜訊也多;長期結構穩、訊號少但一旦成立通常走比較遠,兩邊沒有誰一定對,要先決定自己想做哪種節奏再看對應的那組數字。止盈設三個階段是給你參考「要不要分批獲利了結」的想法,不是要你一定要等到目標三;風險報酬比低於1:1.5左右時,這筆進場的划算程度通常不高,即使方向判斷是對的。實際要不要進場、部位大小、要不要提前停利停損,都要自己判斷,盤勢隨時可能不照這個結構走。</div>`;
+
+  let pattern123Html = '<div class="note">目前沒有偵測到清楚的123法則型態(需要低-高-更高的低,或高-低-更低的高,三個轉折點依序排列)。</div>';
+  const p123 = r.pattern123;
+  if(p123){
+    const typeLabel = p123.type==='bullish' ? '看漲123(反轉向上)' : '看跌123(反轉向下)';
+    const typeColor = p123.type==='bullish' ? 'var(--bull)' : 'var(--bear)';
+    const statusLabel = p123.confirmed
+      ? `<span style="color:var(--gold);">已突破確認</span>`
+      : `尚未突破,等待價格${p123.type==='bullish'?'站上':'跌破'} ${fmtPrice(p123.triggerPrice)}`;
+    pattern123Html = `
+      <div class="metric-row"><span>型態</span><b style="color:${typeColor};">${typeLabel}</b></div>
+      <div class="metric-row"><span>點1</span><b>${fmtPrice(p123.p1price)}</b></div>
+      <div class="metric-row"><span>點2(觸發價)</span><b>${fmtPrice(p123.p2price)}</b></div>
+      <div class="metric-row"><span>點3</span><b>${fmtPrice(p123.p3price)}</b></div>
+      <div class="metric-row"><span>確認狀態</span><b>${statusLabel}</b></div>
+      <div class="metric-row"><span>參考停損</span><b>${fmtPrice(p123.stopRef)}</b></div>
+      <div class="note">123法則是等第三個轉折點沒有破前高/前低,再等價格突破第二個點確認反轉——如果還沒突破,代表型態還沒成立,只是「有可能形成」,不要提前搶進;點3本身也可以當結構性停損參考。這仍然是型態辨識,不是保證。</div>`;
+  }
+
+  const bt = r.ownBacktest;
+  let btHtml = '<div class="note">此幣種歷史樣本太少,無法計算個別回測。</div>';
+  if(bt){
+    const dirBucket = r.dir==='long' ? bt.long : r.dir==='short' ? bt.short : null;
+    if(dirBucket && dirBucket.count>=3){
+      const wr = (dirBucket.correct/dirBucket.count*100).toFixed(1);
+      const winRate = dirBucket.winN/dirBucket.count, lossRate=dirBucket.lossN/dirBucket.count;
+      const avgWin = dirBucket.winN>0?dirBucket.winSum/dirBucket.winN:0;
+      const avgLoss = dirBucket.lossN>0?dirBucket.lossSum/dirBucket.lossN:0;
+      const exp = winRate*avgWin - lossRate*avgLoss;
+      btHtml = `
+        <div class="metric-row"><span>此幣種${r.dir==='long'?'做多':'做空'}歷史勝率</span><b>${wr}%</b></div>
+        <div class="metric-row"><span>期望值/次</span><b>${exp>=0?'+':''}${exp.toFixed(2)}%</b></div>
+        <div class="metric-row"><span>樣本數</span><b>${dirBucket.count} 次</b></div>
+        <div class="note">單一幣種樣本數通常偏少,統計意義有限,僅供參考——建議搭配上方「回測」面板的整體數字一起看。</div>`;
+    }
+  }
+
+  // RSI超買超賣區:加密貨幣波動較大,門檻用80/20;其他市場用一般的70/30
+  const rsiOB = r.market==='crypto' ? 80 : 70;
+  const rsiOS = r.market==='crypto' ? 20 : 30;
+  const rsiZoneLabel = r.rsi>=rsiOB ? `超買區(≥${rsiOB})` : r.rsi<=rsiOS ? `超賣區(≤${rsiOS})` : '一般區間';
+  const rsiZoneColor = r.rsi>=rsiOB ? 'var(--bear)' : r.rsi<=rsiOS ? 'var(--bull)' : 'var(--text-muted)';
+
+  const patternNames = {
+    head_shoulders_bottom: '頭肩底', triple_bottom: '三重底', double_bottom: '雙底',
+    head_shoulders_top: '頭肩頂', triple_top: '三重頂', double_top: '雙頂'
+  };
+  let classicPatternHtml = '<div class="note">目前沒有偵測到清楚的頭肩/雙重/三重轉折型態。</div>';
+  const cp = r.classicPattern;
+  if(cp){
+    const isBottom = cp.type.includes('bottom');
+    classicPatternHtml = `
+      <div class="metric-row"><span>型態</span><b style="color:${isBottom?'var(--bull)':'var(--bear)'};">${patternNames[cp.type]}</b></div>
+      <div class="metric-row"><span>頸線</span><b>${fmtPrice(cp.neckline)}</b></div>
+      <div class="metric-row"><span>確認狀態</span><b>${cp.confirmed ? '<span style="color:var(--gold);">已突破頸線確認</span>' : `尚未突破,等待價格${isBottom?'站上':'跌破'}頸線`}</b></div>
+      <div class="note">型態辨識抓的是最近的擺動高低點排列,不是每次都準,尤其在雜訊多的盤整期容易誤判;沒突破頸線之前只是型態雛形,不是確認。</div>`;
+  }
+
+  let convergenceHtml = '<div class="note">目前沒有偵測到清楚的三角收斂/旗型/楔型(需要至少兩個壓力擺動點跟兩個支撐擺動點,線形要收斂或平行)。</div>';
+  const cv = r.convergencePattern;
+  if(cv){
+    const roleLabel = cv.role==='continuation' ? '中繼型態(順著原趨勢)' : cv.role==='reversal' ? '反轉型態(逆著原趨勢)' : '型態剛形成,原趨勢還不夠明確';
+    const roleColor = cv.role==='continuation' ? 'var(--gold)' : cv.role==='reversal' ? 'var(--bear)' : 'var(--text-muted)';
+    const breakLabel = cv.expectedBreak==='up' ? '預期向上突破' : '預期向下突破';
+    const breakColor = cv.expectedBreak==='up' ? 'var(--bull)' : 'var(--bear)';
+    const priorTrendLabel = cv.priorTrend==='up' ? '原本上升' : cv.priorTrend==='down' ? '原本下降' : '原本方向不明顯';
+    convergenceHtml = `
+      <div class="metric-row"><span>型態</span><b>${cv.name}</b></div>
+      <div class="metric-row"><span>型態出現前的趨勢</span><b>${priorTrendLabel}</b></div>
+      <div class="metric-row"><span>屬於</span><b style="color:${roleColor};">${roleLabel}</b></div>
+      <div class="metric-row"><span>突破方向</span><b style="color:${breakColor};">${breakLabel}</b></div>
+      <div class="metric-row"><span>觸發價(支撐/壓力線)</span><b>${fmtPrice(cv.triggerPrice)}</b></div>
+      <div class="metric-row"><span>確認狀態</span><b>${cv.confirmed ? '<span style="color:var(--gold);">已突破確認</span>' : `尚未突破,等待價格${cv.expectedBreak==='up'?'站上':'跌破'} ${fmtPrice(cv.triggerPrice)}`}</b></div>
+      <div class="metric-row"><span>參考目標價(基準等幅延伸)</span><b>${fmtPrice(cv.targetPrice)}</b></div>
+      <div class="metric-row"><span>參考停損</span><b>${fmtPrice(cv.stopRef)}</b></div>
+      <div class="note">同樣是楔型,出現在原趨勢的拉回段、往同方向突破,就是「中繼」;如果出現在趨勢末端、往反方向突破,就是「反轉」——形狀相同,意義不同,要看它出現的位置。目標價是用型態起點的高度(基準)從突破點往外等幅延伸估的,跟123法則、頭肩型態算法邏輯一樣,只是抓的基準不同;沒突破之前都只是雛形,不代表一定會照這個方向走。</div>`;
+  }
+
+  let zoneHtml = '<div class="note">目前沒有偵測到清楚的供需區(需要一段窄幅盤整後緊接明顯的單邊噴出)。</div>';
+  const sz = r.supplyDemandZone;
+  if(sz){
+    const typeLabel = sz.type==='demand' ? '需求區(潛在買點參考)' : '供給區(潛在賣點參考)';
+    const typeColor = sz.type==='demand' ? 'var(--bull)' : 'var(--bear)';
+    const distLabel = sz.distancePct>=0 ? `距離現價還有 ${sz.distancePct.toFixed(2)}%` : `現價已經在區間內或已跌破/突破,超出 ${Math.abs(sz.distancePct).toFixed(2)}%`;
+    zoneHtml = `
+      <div class="metric-row"><span>型態</span><b style="color:${typeColor};">${typeLabel}</b></div>
+      <div class="metric-row"><span>區間範圍</span><b>${fmtPrice(sz.zoneLow)} ~ ${fmtPrice(sz.zoneHigh)}</b></div>
+      <div class="metric-row"><span>參考進場價</span><b>${fmtPrice(sz.suggestEntry)}</b></div>
+      <div class="metric-row"><span>與現價距離</span><b>${distLabel}</b></div>
+      <div class="metric-row"><span>目前狀態</span><b>${sz.retested ? '<span style="color:var(--gold);">價格已回測到這個區間附近</span>' : '價格還沒回到這個區間'}</b></div>
+      <div class="note">供需區的概念是:一段盤整後如果出現力度明顯偏大的單邊噴出,代表這裡曾經有比較集中的買方或賣方力量,之後價格若回測到這個區間,同一批力量有機會再次出現。這只是機率參考,不代表每次回測都會反彈,尤其是被多次測試過的區間,力道通常會遞減。</div>`;
+  }
+
+  let abcdHtml = '<div class="note">目前沒有偵測到符合比例的ABCD型態(需要最近4個交替高低點,BC、CD的比例要在合理範圍內)。</div>';
+  const ac = r.abcdPattern;
+  if(ac){
+    const dirLabelAc = ac.dir==='bull' ? '看漲(D點附近參考做多)' : '看跌(D點附近參考做空)';
+    const dirColorAc = ac.dir==='bull' ? 'var(--bull)' : 'var(--bear)';
+    abcdHtml = `
+      <div class="metric-row"><span>方向</span><b style="color:${dirColorAc};">${dirLabelAc}</b></div>
+      <div class="metric-row"><span>BC/AB回撤比例</span><b>${(ac.bcRetrace*100).toFixed(1)}%</b></div>
+      <div class="metric-row"><span>CD/BC延伸倍數</span><b>${ac.cdExtension.toFixed(2)}倍</b></div>
+      <div class="metric-row"><span>D點參考價位</span><b>${fmtPrice(ac.dPrice)}</b></div>
+      <div class="metric-row"><span>目前狀態</span><b>${ac.nearD ? '<span style="color:var(--gold);">現價已接近D點</span>' : '現價還沒到D點附近'}</b></div>
+      <div class="note">ABCD是諧波型態的其中一種,靠AB、BC、CD三段的費波那契比例關係判斷型態是否成立,D點是型態說的進場參考位置。比例對上不代表結構一定正確,結構的辨識本身也有主觀成分,這裡只是用固定規則抓一個大概符合比例的形狀,實際要不要當作進場依據請自行判斷。</div>`;
+  }
+
+  let obHtml = '<div class="note">目前沒有偵測到清楚的結構破壞(BOS),需要出現創新高或跌破前低才算數。</div>';
+  const ob = r.orderBlockBOS;
+  if(ob){
+    const bosLabel = ob.bosType==='bull' ? '向上結構破壞(BOS向上)' : '向下結構破壞(BOS向下)';
+    const bosColor = ob.bosType==='bull' ? 'var(--bull)' : 'var(--bear)';
+    const distLabelOb = ob.distancePct>=0 ? `距離現價還有 ${ob.distancePct.toFixed(2)}%` : `現價已經在訂單塊區間內或已超出 ${Math.abs(ob.distancePct).toFixed(2)}%`;
+    obHtml = `
+      <div class="metric-row"><span>結構</span><b style="color:${bosColor};">${bosLabel}</b></div>
+      <div class="metric-row"><span>訂單塊(Order Block)區間</span><b>${fmtPrice(ob.obLow)} ~ ${fmtPrice(ob.obHigh)}</b></div>
+      <div class="metric-row"><span>與現價距離</span><b>${distLabelOb}</b></div>
+      <div class="metric-row"><span>目前狀態</span><b>${ob.retested ? '<span style="color:var(--gold);">價格已回測到訂單塊附近</span>' : '價格還沒回到訂單塊'}</b></div>
+      <div class="note">這是簡化版判斷:結構破壞(BOS)抓的是價格創新高或跌破前低;訂單塊抓的是「突破發生前,最後一根反方向的K棒」高低範圍,概念上代表這裡可能是大單進場的位置。完整的ICT訂單塊判斷很依賴人工經驗,這裡用固定規則抓,精準度沒辦法跟人工判讀比,僅供參考。</div>`;
+  }
+
+  let confluenceScoreHtml = '<div class="note">目前方向不明確,無法計算匯聚分數。</div>';
+  const cs = r.confluenceScore;
+  if(cs && r.dir!=='neutral'){
+    const scoreColor = cs.score>=2 ? 'var(--gold)' : cs.score===1 ? 'var(--text-primary)' : 'var(--text-muted)';
+    const hitsHtml = cs.hits.length ? cs.hits.map(h=>`<div class="metric-row"><span>✓</span><b>${h}</b></div>`).join('') : '<div class="metric-row"><span>—</span><b>目前沒有匯聚訊號</b></div>';
+    confluenceScoreHtml = `
+      <div class="metric-row"><span>匯聚分數</span><b style="color:${scoreColor};">${cs.score} / 3</b></div>
+      ${hitsHtml}
+      <div class="note">把RSI狀態、趨勢線位置、關鍵價位位置三個獨立條件放在一起看,同方向符合的項目越多,代表這裡有比較多獨立理由支持,不是單一指標剛好對到而已。分數高不代表保證會走,只是匯聚程度的量化參考。</div>`;
+  }
+
+  let extremeHtml = '<div class="note">目前沒有偵測到明顯的暴漲/暴跌(需要短時間內的移動幅度超過平常波動的4倍以上)。</div>';
+  const em = r.extremeMove;
+  if(em){
+    const typeLabelEm = em.moveType==='pump' ? '暴漲' : '暴跌';
+    const typeColorEm = em.moveType==='pump' ? 'var(--bull)' : 'var(--bear)';
+    extremeHtml = `
+      <div class="metric-row"><span>類型</span><b style="color:${typeColorEm};">${typeLabelEm}</b></div>
+      <div class="metric-row"><span>移動幅度</span><b>${em.movePct.toFixed(2)}%(平常波動的${em.atrMultiple.toFixed(1)}倍)</b></div>
+      <div class="metric-row"><span>區間</span><b>${fmtPrice(Math.min(em.startPrice,em.endPrice))} ~ ${fmtPrice(Math.max(em.startPrice,em.endPrice))}</b></div>
+      <div class="metric-row"><span>目前已回吐</span><b>${em.retracePct.toFixed(1)}%</b></div>
+      <div class="note">短時間內出現遠超平常波動的${typeLabelEm},代表這段時間情緒或籌碼變化劇烈。這種急殺急拉後,價格常常會有一定程度的反向回吐(不是保證,要看後續有沒有承接或壓力),已經回吐越多,代表反向修正可能越接近尾聲,但也可能是醞釀下一波同方向延續,不能只憑這一個數字判斷,要搭配其他區塊(型態、匯聚分數)一起看。</div>`;
+  }
+
+  document.getElementById('coinModalBody').innerHTML = `
+    <h3>${r.symbol} <span style="color:${dirColor};font-size:15px;">${dirLabel} · ${tierLabel}</span></h3>
+    <div class="sub">信心指數 ${r.confidence}% · 24h ${r.change24h>=0?'+':''}${r.change24h.toFixed(2)}%</div>
+    ${liveAdjHtml}
+    ${confluenceNote}
+
+    <div class="section-title">趨勢與動能</div>
+    <div class="metric-row"><span>大趨勢方向</span><b>${majorLabel}</b></div>
+    <div class="metric-row"><span>RSI(14)</span><b>${r.rsi.toFixed(1)} · <span style="color:${rsiZoneColor};">${rsiZoneLabel}</span></b></div>
+    <div class="metric-row"><span>動能(20期漲跌幅)</span><b>${r.roc>=0?'+':''}${r.roc.toFixed(2)}%</b></div>
+    <div class="metric-row"><span>趨勢強度(類ADX)</span><b>${trendLabel}</b></div>
+    <div class="metric-row"><span>雙週期是否對齊</span><b>${r.aligned?'是':'否'}</b></div>
+    <div class="metric-row"><span>跟大盤(BTC)方向</span><b>${r.isBtcItself ? '— (本身即大盤基準)' : (r.withBtc?'一致':'不一致')}</b></div>
+
+    <div class="section-title">參考進場區(短期/長期分開計算)</div>
+    ${entryHtml}
+
+    <div class="section-title">123法則</div>
+    ${pattern123Html}
+
+    <div class="section-title">經典轉折型態(頭肩/雙重/三重)</div>
+    ${classicPatternHtml}
+
+    <div class="section-title">收斂型態(三角收斂/旗型/楔型 · 中繼或反轉)</div>
+    ${convergenceHtml}
+
+    <div class="section-title">供需區(Base + 噴出)</div>
+    ${zoneHtml}
+
+    <div class="section-title">ABCD諧波型態</div>
+    ${abcdHtml}
+
+    <div class="section-title">Order Block + 結構破壞(簡化版)</div>
+    ${obHtml}
+
+    <div class="section-title">多重匯聚確認(RSI + 趨勢線 + 關鍵價位)</div>
+    ${confluenceScoreHtml}
+
+    <div class="section-title">爆漲/爆跌偵測</div>
+    ${extremeHtml}
+
+    <div class="section-title">買賣力道</div>
+    <div class="metric-row"><span>量能變化</span><b>${r.volExpansion.toFixed(2)} 倍均量</b></div>
+    <div class="metric-row"><span>布林帶位置</span><b>${bbLabel}</b></div>
+    <div class="metric-row"><span>主動買盤比例</span><b>${buyLabel}</b></div>
+    <div class="metric-row"><span>近期振幅(波動雷達)</span><b>${r.volPct.toFixed(2)}%</b></div>
+
+    <div class="section-title">近似大單動向(不是真正鏈上鯨魚追蹤)</div>
+    <div id="whaleSection"><div class="note">載入中...</div></div>
+
+    <div class="section-title">合約未平倉量 & 資金費率(免費資金流參考)</div>
+    <div id="futuresFlowSection"><div class="note">載入中...</div></div>
+
+    <div class="section-title">這個幣自己的回測(非全體平均)</div>
+    ${btHtml}
+  `;
+  document.getElementById('coinModalOverlay').style.display = 'flex';
+
+  // 合約資金流資料另外打API,不擋modal開啟速度,抓到後補進去
+  fetchFuturesFlow(r.symbol, r.market).then(f=>{
+    const el = document.getElementById('futuresFlowSection');
+    if(!el) return;
+    if(!f){
+      el.innerHTML = `<div class="note">這個幣目前查不到對應的永續合約資料(可能是太小眾的幣沒有上永續合約,或暫時連線失敗)。</div>`;
+    }else if(f.unsupported){
+      el.innerHTML = `<div class="note">${f.reason}。</div>`;
+    }else{
+      const oiChangeLabel = f.oiChangePct!=null ? `${f.oiChangePct>=0?'+':''}${f.oiChangePct.toFixed(2)}%(近25小時)` : '暫無資料';
+      const oiChangeColor = f.oiChangePct!=null && Math.abs(f.oiChangePct)>=5 ? 'var(--gold)' : 'var(--text-muted)';
+      const fundingPct = (f.fundingRate*100).toFixed(4)+'%';
+      const fundingExtreme = Math.abs(f.fundingRate) >= 0.0005; // 單次資金費率超過0.05%算偏極端
+      const fundingColor = fundingExtreme ? (f.fundingRate>0?'var(--bear)':'var(--bull)') : 'var(--text-muted)';
+      const fundingNote = fundingExtreme
+        ? (f.fundingRate>0 ? '多方槓桿倉位偏擁擠,留意隨時可能出現多殺多的回檔' : '空方槓桿倉位偏擁擠,留意隨時可能出現軋空反彈')
+        : '目前資金費率不算極端,多空槓桿倉位比較平衡';
+      el.innerHTML = `
+        <div class="metric-row"><span>資料來源</span><b>${f.source}</b></div>
+        <div class="metric-row"><span>未平倉量</span><b>${Number(f.openInterest).toLocaleString('zh-TW',{maximumFractionDigits:0})}</b></div>
+        <div class="metric-row"><span>未平倉量變化</span><b style="color:${oiChangeColor};">${oiChangeLabel}</b></div>
+        <div class="metric-row"><span>當前資金費率</span><b style="color:${fundingColor};">${fundingPct}</b></div>
+        <div class="note">${fundingNote}。未平倉量增加代表有新的槓桿倉位在建立(不管方向),如果增加的同時價格也往同方向走,通常代表這段走勢有新資金支撐,不只是既有倉位的來回洗;如果未平倉量沒什麼變化,價格卻大漲大跌,可能只是既有倉位的擠壓,續航力要打折扣看待。這兩個數字都是永續合約市場公開資料,不是鏈上鯨魚錢包等級的追蹤,僅供參考。</div>`;
+    }
+  }).catch(()=>{
+    const el = document.getElementById('futuresFlowSection');
+    if(el) el.innerHTML = `<div class="note">載入失敗,可能是網路問題。</div>`;
+  });
+
+  // 大單動向資料要另外打一次API,不擋modal開啟速度,抓到後再補進去
+  fetchLargeTradesApprox(r.symbol, r.market).then(w=>{
+    const el = document.getElementById('whaleSection');
+    if(!el) return; // modal可能已經被關掉或切換到別的幣種
+    if(!w){
+      el.innerHTML = `<div class="note">目前抓不到成交明細資料,可能是網路問題或這個標的暫時沒有足夠成交記錄。</div>`;
+    }else if(w.unsupported){
+      el.innerHTML = `<div class="note">${w.reason},這個功能目前只支援Binance資料來源下的加密貨幣。</div>`;
+    }else{
+      const netBias = w.buyUsd - w.sellUsd;
+      const biasLabel = netBias>0 ? '大單買方力量較強' : netBias<0 ? '大單賣方力量較強' : '大單買賣力量接近';
+      const biasColor = netBias>0 ? 'var(--bull)' : netBias<0 ? 'var(--bear)' : 'var(--text-muted)';
+      el.innerHTML = `
+        <div class="metric-row"><span>大單買方(主動買進)</span><b style="color:var(--bull);">${w.buyCount} 筆 · 約$${(w.buyUsd/1000).toFixed(1)}k</b></div>
+        <div class="metric-row"><span>大單賣方(主動賣出)</span><b style="color:var(--bear);">${w.sellCount} 筆 · 約$${(w.sellUsd/1000).toFixed(1)}k</b></div>
+        <div class="metric-row"><span>整體偏向</span><b style="color:${biasColor};">${biasLabel}</b></div>
+        <div class="note">用最近${w.sampleCount}筆成交明細,把單筆金額超過同一批成交中位數15倍(或至少2萬美金,取較大者)的成交視為「大單」。這不是鏈上鯨魚錢包等級的資料,只是公開成交明細裡的異常大額成交,精準度有限,量少的冷門幣種容易失真,僅供參考。</div>`;
+    }
+  }).catch(()=>{
+    const el = document.getElementById('whaleSection');
+    if(el) el.innerHTML = `<div class="note">載入失敗,可能是網路問題。</div>`;
+  });
+}
+function closeCoinDetail(){
+  document.getElementById('coinModalOverlay').style.display = 'none';
+}
+</script>
+</body>
+</html>
